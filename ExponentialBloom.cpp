@@ -1,0 +1,55 @@
+#include "ExponentialBloom.h"
+#include "utils.h"
+
+    
+    
+void ExponentialBloom::insert_key(uint64_t key,uint level){
+    for(uint64_t i=0; i<number_hash_functions;++i){
+        uint64_t h=hash_family(key,i)%size;//TODO SIZE POWER OF TWO
+        omp_set_lock(&lock[h%1024]);
+        if(filter[h]==level){
+            filter[h]++;
+            level_bit_set[level]++;
+            // cout<<"SALUT C COOL"<<endl;cin.get();
+        }else if(filter[h]>level+1){
+            cout<<"ERROR 1"<<endl;
+        }else if(filter[h]<level){
+            cout<<"ERROR 2"<<endl;
+            cout<<(uint)filter[h]<<" "<<level<<endl;
+            cin.get();
+        }
+        omp_unset_lock(&lock[h%1024]);
+    }
+}
+
+
+
+uint8_t ExponentialBloom::check_key(uint64_t key)const{
+    uint8_t result=-1;
+    for(uint64_t i=0; i<number_hash_functions;++i){
+        uint64_t h=hash_family(key,i)%size;//TODO SIZE POWER OF TWO
+        if(filter[h]<result){
+            result=filter[h];
+        }
+    }
+    return result;
+}
+
+
+
+//return check key of a giver bloom
+bool ExponentialBloom::check_key(uint64_t key,uint level)const{
+    for(uint64_t i=0; i<number_hash_functions;++i){
+        uint64_t h=hash_family(key,i)%size;//TODO SIZE POWER OF TWO
+        if(filter[h]<level){
+            return false;
+        }
+    }
+    return true;
+}
+
+
+uint64_t ExponentialBloom::get_cardinality(uint level)const{
+    cout<<level_bit_set[level]<<endl;
+    return level_bit_set[level]/number_hash_functions;
+}
