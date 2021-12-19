@@ -13,18 +13,18 @@
 
 using namespace std;
 
-
+template <class T>
 class Bcardi{
 public:
     vector<Bloom*> big_filters;
-    ExponentialBloom* little_filters;
+    ExponentialBloom<T>* little_filters;
     uint current_level;
     uint K;
     uint64_t offsetUpdatekmer;
 
     Bcardi(const uint number_big_filter,const uint64_t bigest_filter_size,const uint64_t little_filter_size,const uint number_hash_function,const uint Ik){
         K=Ik;
-        little_filters=new ExponentialBloom(little_filter_size,number_hash_function);
+        little_filters=new ExponentialBloom<T>(little_filter_size,number_hash_function);
         for(uint i=0;i<number_big_filter;++i){
             big_filters.push_back(new Bloom(bigest_filter_size,number_hash_function));
         }

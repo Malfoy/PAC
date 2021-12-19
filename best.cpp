@@ -12,15 +12,23 @@
 using namespace std;
 
 
-
-void Best::insert_key(const uint64_t key){
+template <class T>
+void Best<T>::insert_key(const uint64_t key){
     leaf_filters[current_level]->insert_key(key);
 }
 
 
+template <class T>
+void Best<T>::optimize(){
+    for(uint64_t i = 0; i <leaf_filters.size();++i){
+        leaf_filters[i]->optimize();
+    }
+}
 
 
-uint64_t Best::rcb(uint64_t min)const {
+
+template <class T>
+uint64_t Best<T>::rcb(uint64_t min)const {
   uint64_t res(0);
   uint64_t offset(1);
   offset<<=(2*K-2);
@@ -33,22 +41,22 @@ uint64_t Best::rcb(uint64_t min)const {
 }
 
 
-
-void Best::update_kmer(uint64_t& min, char nuc)const {
+template <class T>
+void Best<T>::update_kmer(uint64_t& min, char nuc)const {
   min<<=2;
   min+=nuc2int(nuc);
   min%=offsetUpdatekmer;
 }
 
 
-
-void Best::update_kmer_RC(uint64_t& min, char nuc)const {
+template <class T>
+void Best<T>::update_kmer_RC(uint64_t& min, char nuc)const {
   min>>=2;
   min+=(nuc2intrc(nuc)<<(2*K-2));
 }
 
-
-void Best::insert_last_leaf_trunk(){
+template <class T>
+void Best<T>::insert_last_leaf_trunk(){
     Bloom* leon(leaf_filters[current_level]);
     for(uint64_t i=0; i<leon->size;++i){
         if(leon->filter[i] or trunk->filter[i]!=0){
@@ -58,17 +66,18 @@ void Best::insert_last_leaf_trunk(){
 }
 
 
-
-void Best::change_level(){
+template <class T>
+void Best<T>::change_level(){
     insert_last_leaf_trunk();
+    leaf_filters[current_level]->optimize();
     current_level++;
     leaf_filters.push_back(new Bloom(leaf_filters_size,number_hash_function));
 }
 
 
 
-
-void Best::insert_sequence(const string& reference) {
+template <class T>
+void Best<T>::insert_sequence(const string& reference) {
   uint64_t S_kmer(str2numstrand(reference.substr(0,K-1)));//get the first kmer (k-1 bases)
   uint64_t RC_kmer(rcb(S_kmer));//The reverse complement
   for(uint i(0);i+K<reference.size();++i) {// all kmer in the genome
@@ -80,8 +89,8 @@ void Best::insert_sequence(const string& reference) {
 }
 
 
-
-void  Best::insert_file(const string filename){
+template <class T>
+void  Best<T>::insert_file(const string filename){
     char type=get_data_type(filename);
     zstr::ifstream in(filename);
     #pragma omp parallel
@@ -97,11 +106,12 @@ void  Best::insert_file(const string filename){
             }
         }
     }
+    
 }
 
 
-
-void Best::insert_file_of_file(const string filename){
+template <class T>
+void Best<T>::insert_file_of_file(const string filename){
     zstr::ifstream in(filename);
     string ref;
     while(not in.eof()) {
@@ -116,7 +126,8 @@ void Best::insert_file_of_file(const string filename){
 
 
 
-vector<uint> Best::query_key(const uint64_t key){
+template <class T>
+vector<uint> Best<T>::query_key(const uint64_t key){
     // cout<<"QUERY KEY GO"<<endl;
     vector<uint> result;
     uint level=trunk->check_key(key);
@@ -132,7 +143,9 @@ vector<uint> Best::query_key(const uint64_t key){
 }
 
 
-vector<uint> Best::query_sequence(const string& reference) {
+
+template <class T>
+vector<uint> Best<T>::query_sequence(const string& reference) {
 vector<uint> result(current_level,0);
 vector<uint> colors;
   uint64_t S_kmer(str2numstrand(reference.substr(0,K-1)));//get the first kmer (k-1 bases)
@@ -150,7 +163,9 @@ vector<uint> colors;
 }
 
 
-void Best::get_stats()const{
+
+template <class T>
+void Best<T>::get_stats()const{
     vector<uint> histograms(current_level,0);
     for(uint64_t i=0; i<trunk_size;++i){
         histograms[trunk->filter[i]]++;

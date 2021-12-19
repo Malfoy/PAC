@@ -2,8 +2,8 @@
 #include "utils.h"
 
     
-    
-void ExponentialBloom::insert_key(uint64_t key,uint level){
+template <class T>
+void ExponentialBloom<T>::insert_key(uint64_t key,uint level){
     for(uint64_t i=0; i<number_hash_functions;++i){
         uint64_t h=hash_family(key,i)%size;//TODO SIZE POWER OF TWO
         omp_set_lock(&lock[h%1024]);
@@ -23,8 +23,8 @@ void ExponentialBloom::insert_key(uint64_t key,uint level){
 }
 
 
-
-uint8_t ExponentialBloom::check_key(uint64_t key)const{
+template <class T>
+uint8_t ExponentialBloom<T>::check_key(uint64_t key)const{
     uint8_t result=-1;
     for(uint64_t i=0; i<number_hash_functions;++i){
         uint64_t h=hash_family(key,i)%size;//TODO SIZE POWER OF TWO
@@ -38,7 +38,8 @@ uint8_t ExponentialBloom::check_key(uint64_t key)const{
 
 
 //return check key of a giver bloom
-bool ExponentialBloom::check_key(uint64_t key,uint level)const{
+template <class T>
+bool ExponentialBloom<T>::check_key(uint64_t key,uint level)const{
     for(uint64_t i=0; i<number_hash_functions;++i){
         uint64_t h=hash_family(key,i)%size;//TODO SIZE POWER OF TWO
         if(filter[h]<level){
@@ -48,8 +49,8 @@ bool ExponentialBloom::check_key(uint64_t key,uint level)const{
     return true;
 }
 
-
-uint64_t ExponentialBloom::get_cardinality(uint level)const{
+template <class T>
+uint64_t ExponentialBloom<T>::get_cardinality(uint level)const{
     cout<<level_bit_set[level]<<endl;
     return level_bit_set[level]/number_hash_functions;
 }

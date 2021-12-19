@@ -11,13 +11,13 @@
 
 using namespace std;
 
-
+template <class T>
 class ExponentialBloom{
 public:
     uint64_t size;
     uint number_hash_functions;
     uint64_t number_nonempty_cell;
-    vector<uint8_t> filter;
+    vector<T> filter;
     vector<uint64_t> level_bit_set;
     omp_lock_t lock[1024];
 
@@ -38,4 +38,9 @@ public:
         }
     }
 };
+
+
+template class ExponentialBloom<uint8_t>;
+template class ExponentialBloom<uint16_t>;
+template class ExponentialBloom<uint32_t>;
 #endif

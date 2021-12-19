@@ -1,0 +1,3 @@
+[submodule "BitMagic"]
+	path = BitMagic
+	url = https://github.com/tlk00/BitMagic

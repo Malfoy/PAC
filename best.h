@@ -14,10 +14,13 @@
 using namespace std;
 
 
+//TODO BUCKET PER MINIMIZER
+//TODO SERIALIZATION
+template <class T>
 class Best{
 public:
     vector<Bloom*> leaf_filters;
-    ExponentialBloom* trunk;
+    ExponentialBloom<T>* trunk;
     uint current_level;
     uint K;
     uint64_t offsetUpdatekmer;
@@ -32,7 +35,7 @@ public:
         trunk_size=Itrunk_size;
         leaf_filters_size=Ileaf_filters_size;
         number_hash_function=Inumber_hash_function;
-        trunk=new ExponentialBloom(trunk_size,number_hash_function);
+        trunk=new ExponentialBloom<T>(trunk_size,number_hash_function);
         current_level=0;
         offsetUpdatekmer=1;
         offsetUpdatekmer<<=2*K;
@@ -66,6 +69,10 @@ public:
     vector<uint> query_key(const uint64_t key);
     vector<uint> query_sequence(const string& reference);
     void get_stats()const;
+    void optimize();
 };
 
+template class Best<uint8_t>;
+template class Best<uint16_t>;
+template class Best<uint32_t>;
 #endif
