@@ -17,8 +17,7 @@ using namespace chrono;
 
 
 
-bool do_index(0), do_query(0),load_index(0);
-string fof(""), index_files(""), query_file(""),existing_index("");
+string fof(""), dump_index(""), query_file(""),existing_index("");
 uint16_t nb_hash_func(1), bit_encoding(16);
 uint32_t kmer_size(31);
 uint64_t bf_size(100000000); //todo
@@ -31,14 +30,15 @@ void PrintHelp()
 			"\n******************* Amazing tool **************************************\n"
 			"******************* Does something ******************\n"
 
-			 "--help (-h)             :     Show help\n\n"
+			"--help (-h)             :     Show help\n\n"
 			"\n INDEX CONSTRUCION\n"
 			"--index (-i)             :     build index\n"
-			"--index_dir (-d)         :     provide location to write index files (default: " << index_files << ")\n\n"
+            "--load (-l)              :     load index from disk \n\n"
+			"--dump index (-d)         :     provide location to write index file\n"
 			"--fof (-f)               :     provide file of files for index construction (FASTA/Q/GZ allowed in file of files)\n\n"
 			"\n INDEX QUERY\n"
 			"--query (-q)             :     provide sequence file (FASTA/Q/GZ) for the query\n"
-			"--load (-l)              :     index files location (default:.)\n\n"
+			
 			"\n OTHER OPTIONS\n"
 			"-k                       :     k-mer size (default: " << kmer_size << ")\n"
 			"-b                       :     Bloom filter size (default " << bf_size << ")\n"
@@ -77,10 +77,7 @@ void ProcessArgs(int argc, char** argv)
 				kmer_size=stoi(optarg);
 				break;
 			case 'd':
-				index_files=optarg;
-				break;
-			case 'i':
-				do_index=true;
+				dump_index=optarg;
 				break;
 			case 'f':
 				fof=optarg;
@@ -89,7 +86,7 @@ void ProcessArgs(int argc, char** argv)
 				query_file=optarg;
 				break;
 			case 'l':
-				index_files=optarg;
+				existing_index=optarg;
 				break;
 			case 'b':
 				bf_size=stoi(optarg);
@@ -143,73 +140,54 @@ int main(int argc, char **argv)
     }
 
     //WE BUILD THE INDEX
-	if (do_index)
+	if (fof!="")
 	{
-		if (fof == "")
-		{
-			cerr << "[PARAMETER ERROR] Please provide a valid file of files\n";
-			PrintHelp();
-			return -1;
-		}
-
-        if(index_files!=""){
-            int systRet(0);
-            //directory for index serialization
-            if (not directory_exists(index_files)) 
-            {
-                cout << "Creating directory for index serialization in " << index_files << endl;
-                systRet=system(("mkdir " + index_files).c_str());
-            }
-            else
-            {
-                cout << "Index file already exists in " << index_files << endl;
-            }
 		
-        }else
-		{
-			cout << "Building index from file of file (" << fof << ") in " << index_files << "...\n";
-			switch (bit_encoding)
-			{
-				case 8:
-				{
-					BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
-					ever.insert_file_of_file(fof);
-                    if(query_file!=""){
-                        ever.query_file(query_file);
-                    }
-                    if(index_files!=""){
-                        ever.serialize(index_files);
-                    }
-					break;
-				}
-				case 16:
-				{
-					BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
-					ever.insert_file_of_file(fof);
-                    if(query_file!=""){
-                        ever.query_file(query_file);
-                    }
-                    if(index_files!=""){
-                        ever.serialize(index_files);
-                    }
-					break;
-				}
-				case 32:
-				{
-					BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
-					ever.insert_file_of_file(fof);
-                    if(query_file!=""){
-                        ever.query_file(query_file);
-                    }
-                    if(index_files!=""){
-                        ever.serialize(index_files);
-                    }
-					break;
-				}
-			}
-		}
+
+    
+
+        cout << "Building index from file of file (" << fof << ")\n";
+        switch (bit_encoding)
+        {
+            case 8:
+            {
+                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
+                ever.insert_file_of_file(fof);
+                if(query_file!=""){
+                    ever.query_file(query_file);
+                }
+                if(dump_index!=""){
+                    ever.serialize(dump_index);
+                }
+                break;
+            }
+            case 16:
+            {
+                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
+                ever.insert_file_of_file(fof);
+                if(query_file!=""){
+                    ever.query_file(query_file);
+                }
+                if(dump_index!=""){
+                    ever.serialize(dump_index);
+                }
+                break;
+            }
+            case 32:
+            {
+                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
+                ever.insert_file_of_file(fof);
+                if(query_file!=""){
+                    ever.query_file(query_file);
+                }
+                if(dump_index!=""){
+                    ever.serialize(dump_index);
+                }
+                break;
+            }
+        }
 		return 0;
-	}else if(load_index){
+	}else if(existing_index != ""){
         cout << "LOADING index from file " << existing_index << endl;
         switch (bit_encoding)
         {
@@ -217,6 +195,7 @@ int main(int argc, char **argv)
             {
                 BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
                 ever.load(existing_index);
+                cout<<"Loaded8 "<<endl;
                 if(query_file!=""){
                     ever.query_file(query_file);
                 }
@@ -226,6 +205,7 @@ int main(int argc, char **argv)
             {
                 BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
                 ever.load(existing_index);
+                cout<<"Loaded16 "<<endl;
                 if(query_file!=""){
                     ever.query_file(query_file);
                 }

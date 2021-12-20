@@ -2,6 +2,8 @@
 #include "ExponentialBloom.h"
 #include "utils.h"
 #include "best.h"
+#include "BitMagic/src/bmserial.h"
+#include "BitMagic/src/bmundef.h"
 #include <iostream>
 #include <vector>
 #include <math.h>
@@ -165,7 +167,7 @@ vector<T> Best<T>::query_key(const uint64_t key){
     vector<T> result;
     uint level=trunk->check_key(key);
     //  cout<<"CHEY KEY OK"<<endl;
-    for(int i=level;i>=0;i--){
+    for(int i=level-1;i>=0;i--){
         // cout<<leaf_filters.size()<<" "<<i<<endl;
         if(leaf_filters[i]->check_key(key)){
             result.push_back(i);
@@ -173,6 +175,49 @@ vector<T> Best<T>::query_key(const uint64_t key){
     }
     //  cout<<"QUERY KEY END"<<endl;
     return result;
+}
+
+
+
+template <class T>
+void Best<T>::serialize(zstr::ostream* out)const{
+    void* point = &(trunk->filter[0]);
+    // cout<<trunk_size<<endl;
+    out->write((char*)point, sizeof(T)*trunk_size);
+    bm::serializer<bm::bvector<> > bvs;
+	bvs.byte_order_serialization(false);
+	bvs.gap_length_serialization(false);
+	bm::serializer<bm::bvector<> >::buffer sbuf;
+    for(int i = 0; i < current_level; ++i){
+        unsigned char* buf = 0;
+		bvs.serialize(leaf_filters[i]->filter, sbuf);
+		buf         = sbuf.data();
+		uint64_t sz = sbuf.size();
+        // cout<<"size buff"<<sz<<endl;
+		auto point2 = &buf[0];
+		out->write(reinterpret_cast<const char*>(&sz), sizeof(sz));
+		out->write((char*)point2, sz);
+    }
+}
+
+
+template <class T>
+void Best<T>::load(zstr::ifstream* out){
+    void* point = &(trunk->filter[0]);
+    // cout<<trunk_size<<endl;
+    out->read((char*)point, sizeof(T)*trunk_size);
+    // cout<<"read trunk"<<endl;
+    for(int i = 0; i < current_level; ++i){
+        // cout<<"go leaf"<<endl;
+        uint64_t sz;
+        out->read(reinterpret_cast<char*>(&sz), sizeof(sz));
+        // cout<<sz<<endl;
+        uint8_t* buff = new uint8_t[sz];
+        out->read((char*)buff, sz);
+        //  cout<<"read ok"<<endl;
+        bm::deserialize(leaf_filters[i]->filter, buff);
+        delete[] buff;
+    }
 }
 
 

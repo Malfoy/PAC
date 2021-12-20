@@ -63,7 +63,9 @@ vector<T> BestPart<T>::query_keys(const vector<uint64_t>& key,uint minimizer){
     vector<T> result;
     vector<T> colors;
     for(uint i=0;i<key.size(); ++i){
+        // cout<<"go query key"<<key[i]<<endl;
         colors=buckets[minimizer]->query_key(key[i]);
+        // cout<<"OK query key"<<key[i]<<endl;
         result.insert( result.end(), colors.begin(), colors.end() );
         colors.clear();
     }
@@ -233,6 +235,7 @@ void BestPart<T>::insert_sequence(const string& reference){
 
 template <class T>
 void BestPart<T>::query_file(const string& filename){
+    cout<<"gi query file"<<endl;
     zstr::ofstream out("output.gz",ios::binary);
     char type=get_data_type(filename);
     zstr::ifstream in(filename);
@@ -246,9 +249,9 @@ void BestPart<T>::query_file(const string& filename){
              Biogetline(&in,ref,type,K);
             }
             if(ref.size()>K) {
-                cout<<"query_sequence part go"<<endl;
+                // cout<<"query_sequence part go"<<endl;
                 colors_count=query_sequence(ref);
-                 cout<<"query_sequence  part end"<<endl;
+                //  cout<<"query_sequence  part end"<<endl;
                 for(int i=0;i<colors_count.size();i++){
                     out<<colors_count[i]<<' ';
                 }
@@ -259,30 +262,22 @@ void BestPart<T>::query_file(const string& filename){
 }
 
 
-template <class T>
-void BestPart<T>::serialize(const string& dumpfile){
-
-}
 
 
-
-template <class T>
-BestPart<T> BestPart<T>::load(const string& existing_index){
-
-}
 
 
 
 
 template <class T>
 vector<uint32_t> BestPart<T>::query_sequence(const string& reference){
+    // cout<<"Query sequence go"<<endl;
     vector<uint32_t> result(current_level,0);
     vector<T> colors;
     auto V(get_super_kmers(reference));
     for(uint32_t i = 0; i < V.size();++i){
         // cout<<"query super kmer go"<<endl;
         colors=query_keys(V[i].first, V[i].second);
-        // cout<<"query supe  r kmer OK"<<endl;
+        // cout<<"query super kmer OK"<<endl;
         for(uint32_t j = 0; j <colors.size();++j){
             result[colors[j]]++;
         }
@@ -338,4 +333,67 @@ void BestPart<T>::get_stats()const{
     }
     cout<<endl;
     cout<<intToString(total)<<endl;
+}
+
+
+
+template <class T>
+void BestPart<T>::serialize(const string& filename)const{
+    filebuf fb;
+    fb.open(filename, ios::out | ios::binary | ios::trunc);
+	zstr::ostream out(&fb);
+    // VARIOUS INTEGERS
+	out.write(reinterpret_cast<const char*>(&K), sizeof(K));
+    out.write(reinterpret_cast<const char*>(&current_level), sizeof(current_level));
+    out.write(reinterpret_cast<const char*>(&leaf_filters_size), sizeof(leaf_filters_size));
+    out.write(reinterpret_cast<const char*>(&trunk_size), sizeof(trunk_size));
+    out.write(reinterpret_cast<const char*>(&number_hash_function), sizeof(number_hash_function));
+    out.write(reinterpret_cast<const char*>(&small_minimizer_size), sizeof(small_minimizer_size));
+    out.write(reinterpret_cast<const char*>(&large_minimizer_size), sizeof(large_minimizer_size));
+    // cout<<K<<" "<<current_level<<leaf_filters_size<<" "<<trunk_size<<" "<<number_hash_function<<" "<<small_minimizer_size<<" "<<large_minimizer_size<<endl;
+    //buckets
+    for(size_t i = 0; i <buckets.size(); ++i){
+        buckets[i]->serialize(&out);
+    }
+    out<<flush;
+    fb.close();
+}
+
+
+template <class T>
+void BestPart<T>::load(const string& existing_index){
+    cout<<"Loading "<<existing_index<<"..."<<endl;
+    zstr::ifstream in(existing_index);
+     // VARIOUS INTEGERS
+    in.read(reinterpret_cast< char*>(&K), sizeof(K));
+    in.read(reinterpret_cast< char*>(&current_level), sizeof(current_level));
+    in.read(reinterpret_cast< char*>(&leaf_filters_size), sizeof(leaf_filters_size));
+    in.read(reinterpret_cast< char*>(&trunk_size), sizeof(trunk_size));
+    in.read(reinterpret_cast< char*>(&number_hash_function), sizeof(number_hash_function));
+    in.read(reinterpret_cast< char*>(&small_minimizer_size), sizeof(small_minimizer_size));
+    in.read(reinterpret_cast< char*>(&large_minimizer_size), sizeof(large_minimizer_size));
+    // cout<<K<<" "<<current_level<<leaf_filters_size<<" "<<trunk_size<<" "<<number_hash_function<<" "<<small_minimizer_size<<" "<<large_minimizer_size<<endl;
+    bucket_number=1<<(2*small_minimizer_size);
+    large_minimizer_number=1<<(2*large_minimizer_size);
+    mutex_array=new omp_lock_t[bucket_number];
+    offsetUpdatekmer=1;
+    offsetUpdatekmer<<=2*K;
+    offsetUpdateminimizer=1;
+    offsetUpdateminimizer<<=(2*large_minimizer_size);
+    for(uint32_t i=0;i<bucket_number;++i){
+        omp_init_lock(&mutex_array[i]);
+    }
+
+    buckets.resize(bucket_number,NULL);
+    // cout<<"LOAD Best part seem ok"<<endl;
+    //buckets
+    for(size_t i = 0; i <buckets.size(); ++i){
+        // cout<<"GO LOAD BEST"<<endl;
+        buckets[i]=new Best<T>(trunk_size/bucket_number,leaf_filters_size/bucket_number,number_hash_function,K);
+        // cout<<"init"<<endl;
+        buckets[i]->current_level=current_level;
+        buckets[i]->load(&in);
+        // cout<<"END LOAD BEST"<<endl;
+    }
+    // cout<<"WTFlafin"<<endl;
 }

@@ -38,9 +38,10 @@ public:
 
     BestPart(const uint64_t Itrunk_size,const uint64_t Ileaf_filters_size,const uint Inumber_hash_function,const uint Ik){
         K=Ik;
-        small_minimizer_size=4;
+        small_minimizer_size=5;
         bucket_number=1<<(2*small_minimizer_size);
         large_minimizer_size=small_minimizer_size+3;
+        large_minimizer_number=1<<(2*large_minimizer_size);
         trunk_size=Itrunk_size;
         leaf_filters_size=Ileaf_filters_size;
         number_hash_function=Inumber_hash_function;
@@ -89,8 +90,8 @@ public:
     void get_stats()const;
     void optimize();
     void query_file(const string& reference);
-    void serialize(const string& dumpfile);
-    BestPart<T> load(const string& existing_index);
+    void serialize(const string& filename)const;
+    void load(const string& existing_index);
 };
 
 template class BestPart<uint8_t>;

@@ -15,7 +15,6 @@ using namespace std;
 
 
 
-//TODO BUCKET PER MINIMIZER
 //TODO SERIALIZATION
 template <class T>
 class Best{
@@ -64,6 +63,7 @@ public:
     void update_kmer(uint64_t& min, char nuc)const;
     void update_kmer_RC(uint64_t& min, char nuc)const;
     void insert_last_leaf_trunk();
+    void load(zstr::ifstream* out);
 
     //HIGH LEVEL FUNCTIONS
     void insert_sequence(const string& reference) ;
@@ -72,6 +72,7 @@ public:
     vector<T> query_key(const uint64_t key);
     vector<uint> query_sequence(const string& reference);
     void get_stats()const;
+    void serialize(zstr::ostream* out)const;
     void optimize();
 };
 
