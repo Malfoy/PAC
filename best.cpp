@@ -12,10 +12,13 @@
 using namespace std;
 
 
+
 template <class T>
 void Best<T>::insert_key(const uint64_t key){
     leaf_filters[current_level]->insert_key(key);
+    nb_insertions++;
 }
+
 
 
 template <class T>
@@ -41,6 +44,7 @@ uint64_t Best<T>::rcb(uint64_t min)const {
 }
 
 
+
 template <class T>
 void Best<T>::update_kmer(uint64_t& min, char nuc)const {
   min<<=2;
@@ -49,21 +53,48 @@ void Best<T>::update_kmer(uint64_t& min, char nuc)const {
 }
 
 
+
 template <class T>
 void Best<T>::update_kmer_RC(uint64_t& min, char nuc)const {
   min>>=2;
   min+=(nuc2intrc(nuc)<<(2*K-2));
 }
 
+
+
 template <class T>
 void Best<T>::insert_last_leaf_trunk(){
     Bloom* leon(leaf_filters[current_level]);
-    for(uint64_t i=0; i<leon->size;++i){
-        if(leon->filter[i] or trunk->filter[i]!=0){
+    auto value = leon->filter.get_first();
+    uint64_t i=0;
+    for(;i<leon->size and i<value;++i){
+        if(trunk->filter[i]!=0){
+            trunk->filter[i]++;
+        }
+    }
+    trunk->filter[value]++;
+    i++;
+    do{
+        value = leon->filter.get_next(value);
+        if (value){
+            for(;i<leon->size and i<value;++i){
+                if(trunk->filter[i]!=0){
+                    trunk->filter[i]++;
+                }
+            }
+            trunk->filter[value]++;
+            i++;
+        }else{
+            break;
+        }
+    } while(true);
+    for( ;i<leon->size;++i){
+        if(trunk->filter[i]!=0){
             trunk->filter[i]++;
         }
     }
 }
+
 
 
 template <class T>
@@ -89,6 +120,7 @@ void Best<T>::insert_sequence(const string& reference) {
 }
 
 
+
 template <class T>
 void  Best<T>::insert_file(const string filename){
     char type=get_data_type(filename);
@@ -110,6 +142,7 @@ void  Best<T>::insert_file(const string filename){
 }
 
 
+
 template <class T>
 void Best<T>::insert_file_of_file(const string filename){
     zstr::ifstream in(filename);
@@ -127,9 +160,9 @@ void Best<T>::insert_file_of_file(const string filename){
 
 
 template <class T>
-vector<uint> Best<T>::query_key(const uint64_t key){
+vector<T> Best<T>::query_key(const uint64_t key){
     // cout<<"QUERY KEY GO"<<endl;
-    vector<uint> result;
+    vector<T> result;
     uint level=trunk->check_key(key);
     //  cout<<"CHEY KEY OK"<<endl;
     for(int i=level;i>=0;i--){
@@ -144,23 +177,6 @@ vector<uint> Best<T>::query_key(const uint64_t key){
 
 
 
-template <class T>
-vector<uint> Best<T>::query_sequence(const string& reference) {
-vector<uint> result(current_level,0);
-vector<uint> colors;
-  uint64_t S_kmer(str2numstrand(reference.substr(0,K-1)));//get the first kmer (k-1 bases)
-  uint64_t RC_kmer(rcb(S_kmer));//The reverse complement
-  for(uint i(0);i+K<reference.size();++i) {// all kmer in the genome
-    update_kmer(S_kmer,reference[i+K-1]);
-    update_kmer_RC(RC_kmer,reference[i+K-1]);
-    uint64_t canon(min(S_kmer,RC_kmer));//Kmer min, the one selected
-    colors=(query_key(canon));
-    for(uint64_t i=0; i<colors.size();++i){
-        result[colors[i]]++;
-    }
-  }
-  return result;
-}
 
 
 

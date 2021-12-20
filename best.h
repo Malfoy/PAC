@@ -14,6 +14,7 @@
 using namespace std;
 
 
+
 //TODO BUCKET PER MINIMIZER
 //TODO SERIALIZATION
 template <class T>
@@ -27,6 +28,7 @@ public:
     uint64_t leaf_filters_size;
     uint64_t trunk_size;
     uint number_hash_function;
+    uint64_t nb_insertions;
 
 
 
@@ -39,6 +41,7 @@ public:
         current_level=0;
         offsetUpdatekmer=1;
         offsetUpdatekmer<<=2*K;
+        nb_insertions=0;
         leaf_filters.push_back(new Bloom(leaf_filters_size,number_hash_function));
     }
 
@@ -66,7 +69,7 @@ public:
     void insert_sequence(const string& reference) ;
     void insert_file(const string filename);
     void insert_file_of_file(const string filename);
-    vector<uint> query_key(const uint64_t key);
+    vector<T> query_key(const uint64_t key);
     vector<uint> query_sequence(const string& reference);
     void get_stats()const;
     void optimize();

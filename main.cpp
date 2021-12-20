@@ -8,17 +8,22 @@
 #include <getopt.h>
 #include "bcardi.h"
 #include "best.h"
+#include "bestpart.h"
 
 
 
 using namespace std;
 using namespace chrono;
 
-bool do_index(0), do_query(0);
-string fof(""), index_files("./index_files"), query_file("");
+
+
+bool do_index(0), do_query(0),load_index(0);
+string fof(""), index_files(""), query_file(""),existing_index("");
 uint16_t nb_hash_func(1), bit_encoding(16);
 uint32_t kmer_size(31);
 uint64_t bf_size(100000000); //todo
+
+
 
 void PrintHelp()
 {
@@ -126,8 +131,18 @@ int main(int argc, char **argv)
 	{
 		PrintHelp();
 	}
-	// BUILD INDEX
+
 	cout << "************** SUPER TOOL GO ***************\n\n";
+
+    // check bit encoding + build index
+    if (!(bit_encoding == 8 or bit_encoding == 16 or bit_encoding == 32))
+    {
+        cerr << "[PARAMETER ERROR] Wrong bit encoding value\n";
+        PrintHelp();
+        return -1;
+    }
+
+    //WE BUILD THE INDEX
 	if (do_index)
 	{
 		if (fof == "")
@@ -136,84 +151,97 @@ int main(int argc, char **argv)
 			PrintHelp();
 			return -1;
 		}
-		int systRet(0);
-		//directory for index serialization
-		if (not directory_exists(index_files)) 
-		{
-			cout << "Creating directory for index serialization in " << index_files << endl;
-			systRet=system(("mkdir " + index_files).c_str());
-		}
-		else
-		{
-			cout << "Index file already exists in " << index_files << endl;
-		}
-		// check bit encoding + build index
-		if (!(bit_encoding == 8 or bit_encoding == 16 or bit_encoding == 32))
-		{
-			cerr << "[PARAMETER ERROR] Wrong bit encoding value\n";
-			PrintHelp();
-			return -1;
-		}
-		else
+
+        if(index_files!=""){
+            int systRet(0);
+            //directory for index serialization
+            if (not directory_exists(index_files)) 
+            {
+                cout << "Creating directory for index serialization in " << index_files << endl;
+                systRet=system(("mkdir " + index_files).c_str());
+            }
+            else
+            {
+                cout << "Index file already exists in " << index_files << endl;
+            }
+		
+        }else
 		{
 			cout << "Building index from file of file (" << fof << ") in " << index_files << "...\n";
 			switch (bit_encoding)
 			{
 				case 8:
 				{
-					Best<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
-					ever.Best<uint8_t>::insert_file_of_file(fof);
+					BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
+					ever.insert_file_of_file(fof);
+                    if(query_file!=""){
+                        ever.query_file(query_file);
+                    }
+                    if(index_files!=""){
+                        ever.serialize(index_files);
+                    }
 					break;
 				}
 				case 16:
 				{
-					Best<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
-					ever.Best<uint16_t>::insert_file_of_file(fof);
+					BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
+					ever.insert_file_of_file(fof);
+                    if(query_file!=""){
+                        ever.query_file(query_file);
+                    }
+                    if(index_files!=""){
+                        ever.serialize(index_files);
+                    }
 					break;
 				}
 				case 32:
 				{
-					Best<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
-					ever.Best<uint32_t>::insert_file_of_file(fof);
+					BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
+					ever.insert_file_of_file(fof);
+                    if(query_file!=""){
+                        ever.query_file(query_file);
+                    }
+                    if(index_files!=""){
+                        ever.serialize(index_files);
+                    }
 					break;
 				}
 			}
 		}
 		return 0;
-	}
-	// QUERY
-	if (query_file != "")
-	{
-		// first load index //
-		
-		// then query //
-		string sequence("");
-		char data_type (get_data_type(query_file));
-		// read query file
-		zstr::ifstream * query_sequences = new zstr::ifstream(query_file); 
-		while(not query_sequences->eof()) 
-		{
-			Biogetline(query_sequences, sequence, data_type, kmer_size);
-			//~ ever.Best<uint8_t>::query_sequence(sequence);
-		}
-		delete query_sequences;
-		return 0;
-	}
+	}else if(load_index){
+        cout << "LOADING index from file " << existing_index << endl;
+        switch (bit_encoding)
+        {
+            case 8:
+            {
+                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
+                ever.load(existing_index);
+                if(query_file!=""){
+                    ever.query_file(query_file);
+                }
+                break;
+            }
+            case 16:
+            {
+                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
+                ever.load(existing_index);
+                if(query_file!=""){
+                    ever.query_file(query_file);
+                }
+                break;
+            }
+            case 32:
+            {
+                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
+                ever.load(existing_index);
+                if(query_file!=""){
+                    ever.query_file(query_file);
+                }
+                break;
+            }
+        }
+    }
+	
 	return 0;
 }
-
-
-
-//~ int main(int argc, char ** argv){
-   
-    //~ srand(time(NULL));
-    //~ string  fof((argv[1]));
-    //~ //TODO BENCH CONSTRUCTION AND QUERY TIME
-    //~ Best<uint8_t> ever(1000*1000*1000, 1000*1000*1000*1,1,21);
-    //~ ever.Best<uint8_t>::insert_file_of_file(fof);
-    //~ ever.Best<uint8_t>::query_sequence("GACTGGTATGCGTTTTCACTGCCGAAAATGAAAGCCAGTAAAGAAGTTACAACGGACGATGAGTTACGTATCTGGAAATAAGGTTGAAAAATAAAAACGGCGCTAAAAAGCGCCGTTTTTTTTGACGGTGGTAAAGCCGATTAATCTTCCAGATCACCGCAGAAGCGATAACCTTCACCGTGAATGGTGGCGATGATTTCCGGCGTATCCGGCGTAGATTCGAAATGTTTACGAATACGGCGGATCGTCACGTCTACAGTACGGTCGTGCGGTTTCAGCTCACGGCCGGTCATTTTCTTCAGCAGTTCAGCACGGGACTGAATTTTGCCTGGGTTTTCACAGAAGTGAAGCATGGCGCGGAACTCGCTGCGCGGCAGCTTGTACTGCTCGCCATCAGGGCCGATCAACGAACGGCTGTTGATGTCCAGTTCCCAACCATTGAACTTGTAGCTTTCAACGCTACGACGTTCTTCGCTGACAGTACCCAGATTCATGGTACGGGACAGTAGGTTGCGTGCACGAATCGTCAGTTCACGCGGGTTGAACGGTTTGGTGATGTAGTCATCTGCACCGATATCGAGGCCGAGAATTTTATCGACTTCGTTGTCACGGCCAGTCAGGAACATCAACGCAACATTCGCCTGCTCGCGCAGTTCACGCGCTAACAGAAGACCGTTCTTACCCGGCAGATTGATATCCATGATCACCAGGTTGATGTCATATTCAGAGAGGATCTGATGCATTTCCGCGCCATCTGTCGCTTCGAAAACATCATAGCCTTCCGCTTCGAAAATACTTTTCAACGTGTTGCGTGTTACCAACTCGTCTTCAACGATAAGAATGTGCGGGGTCTGCATGTTTGCTACCTAAATTGCCAACTAAATCGAAACAGGAAGTACAAAAGTCCCTGACCTGCCTGATGCATGCTGCAAATTAACATGATCGGCGTAACATGACTAAAGTACGTAATTGCGTTCTTGATGCACTTTCCATCAACGTCAACAACATCATTAGCTTGGTCGTGGGTACTTTCCCTCAGGACCCGACAGTGTCAAAAACGGCTGTCATCCTAACCATTTTAACAGCAACATAACAGGCTAAGAGGGGCCGGACACCCAATAAAACTACGCTTCGTTGACATATATCAAGTTCAATTGTAGCACGTTAACAGTTTGATGAAATCATCGTATCTAAATGCTAGCTTTCGTCACATTATTTTAATAATCCAACTAGTTGCATCATACAACTAATAAACGTGGTGAATCCAATTGTCGAGATTTATTTTTTATAAAGTTATCCTAAGTAAACAGAAGGATATGTAGCATTTTTTAACAACTCAACCGTTAGTACAGTCAGGAAATAGTTTAGCCTTTTTTAAGCTAAGTAAAGGGCTTTTTCTGCGACTTACGTTAAGAATTTGTAAATTCGCACCGCGTAATAAGTTGACAGTGATCACCCGGTTCGCGGTTATTTGATCAAGAAGAGTGGCAATATGCGTATAACGATTATTCTGGTCGCACCCGCCAGAGCAGAAAATATTGGGGCAGCGGCGCGGGCAATGAAAACGATGGGGTTTAGCGATCTGCGGATTGTCGATAGTCAGGCACACCTGGAGCCAGCCACCCGCTGGGTCGCACATGGATCTGGTGATATTATTGATAATATTAAAGTTTTCCCGACATTGGCTGAATCGTTACACGATGTCGATTTCACTGTCGCCACCACTGCGCGCAGTCGGGCGAAATATCATTACTACGCCACGCCAGTTGCACTGGTGCCGCTGTTAGAGGAAAAATCTTCATGGATGAGCCATGCCGCGCTGGTGTTTGGTCGCGAAGATTCCGGGTTGACTAACGAAGAGTTAGCGTTGGCTGACGTTCTTACTGGTGTGCCGATGGTGGCGGATTATCCTTCGCTCAATCTGGGGCAGGCGGTGATGGTCTATTGCTATCAATTAGCAACATTAATACAACAACCGGCGAAAAGTGATGCAACGGCAGACCAACATCAACTGCAAGCTTTACGCGAACGAGCCATGACATTGCTGACGACTCTGGCAGTGGCAGATGACATAAAACTGGTCGACTGGTTACAACAACGCCTGGGGCTTTTAGAGCAACGAGACACGGCAATGTTGCACCGTTTGCTGCATGATATTGAAAAAAATATCACCAAATAAAAAACGCCTTAGTAAGTATTTTTC");
-    //~ ever.Best<uint8_t>::get_stats();
-    //~ // Bcardi Richelieu(1,(uint64_t)10*1000*1000*1000,1000*1000*1000,1,31);
-    //~ // Richelieu.insert_file_of_file(fof);
-    //~ // Richelieu.get_cardinalities();
-//~ }

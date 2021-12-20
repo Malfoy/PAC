@@ -25,6 +25,7 @@ uint64_t str2num(const string& str) {
 }
 
 
+
 uint64_t revhash(uint64_t x) {
 	// return hash64shift(x);
 	x = ((x >> 32) ^ x) * 0xD6E8FEB86659FD93;
@@ -44,15 +45,31 @@ uint64_t unrevhash(uint64_t x) {
 }
 
 
+
 template <class T>
-void BestPart<T>::insert_keys( vector<uint64_t>& key,uint minimizer){
+void BestPart<T>::insert_keys(const vector<uint64_t>& key,uint minimizer){
+    // cout<<key.size()<<endl;
+    // cin.get();
     omp_set_lock(&mutex_array[minimizer]);
     for(uint i=0;i<key.size(); ++i){
         buckets[minimizer]->insert_key(key[i]);
     }
     omp_unset_lock(&mutex_array[minimizer]);
-    key.clear();
 }
+
+
+template <class T>
+vector<T> BestPart<T>::query_keys(const vector<uint64_t>& key,uint minimizer){
+    vector<T> result;
+    vector<T> colors;
+    for(uint i=0;i<key.size(); ++i){
+        colors=buckets[minimizer]->query_key(key[i]);
+        result.insert( result.end(), colors.begin(), colors.end() );
+        colors.clear();
+    }
+    return result;
+}
+
 
 
 //TODO CAN BE IMPROVED?
@@ -70,11 +87,11 @@ uint64_t BestPart<T>::rcb(uint64_t min, uint64_t n)const {
 }
 
 
+
 template <class T>
 uint64_t BestPart<T>::canonize(uint64_t x, uint64_t n) {
 	return min(x, rcb(x, n));
 }
-
 
 
 
@@ -145,7 +162,8 @@ void BestPart<T>::change_level(){
 
 
 template <class T>
-void BestPart<T>::insert_sequence(const string& ref) {
+vector<pair<vector<uint64_t>,uint64_t> > BestPart<T>::get_super_kmers(const string& ref) {
+    vector<pair<vector<uint64_t>,uint64_t> > result;
     uint64_t old_minimizer, minimizer;
     vector<uint64_t> superkmer;
     old_minimizer = minimizer = large_minimizer_number;
@@ -187,7 +205,8 @@ void BestPart<T>::insert_sequence(const string& ref) {
         // COMPUTE KMER MINIMIZER
         if (revhash(old_minimizer) % bucket_number != revhash(minimizer) % bucket_number) {
             old_minimizer = (revhash(old_minimizer) % bucket_number);
-            insert_keys(superkmer,old_minimizer);
+            result.push_back({superkmer,old_minimizer});
+            superkmer.clear();
             last_position = i + 1;
             old_minimizer = minimizer;
         }
@@ -195,8 +214,80 @@ void BestPart<T>::insert_sequence(const string& ref) {
     }
     if (ref.size() - last_position > K - 1) {
         old_minimizer = (revhash(old_minimizer) % bucket_number);
-        insert_keys(superkmer,old_minimizer);
+        result.push_back({superkmer,old_minimizer});
+        superkmer.clear();
     }
+    return result;
+}
+
+
+template <class T>
+void BestPart<T>::insert_sequence(const string& reference){
+    auto V(get_super_kmers(reference));
+    for(uint32_t i = 0; i < V.size();++i){
+        insert_keys(V[i].first, V[i].second);
+    }
+}
+
+
+
+template <class T>
+void BestPart<T>::query_file(const string& filename){
+    zstr::ofstream out("output.gz",ios::binary);
+    char type=get_data_type(filename);
+    zstr::ifstream in(filename);
+    #pragma omp parallel
+    {
+        string ref;
+        vector<uint32_t> colors_count;
+        while(not in.eof()) {
+            #pragma omp critical (inputfile)
+            {
+             Biogetline(&in,ref,type,K);
+            }
+            if(ref.size()>K) {
+                cout<<"query_sequence part go"<<endl;
+                colors_count=query_sequence(ref);
+                 cout<<"query_sequence  part end"<<endl;
+                for(int i=0;i<colors_count.size();i++){
+                    out<<colors_count[i]<<' ';
+                }
+            }
+        }
+    }
+    out.close();
+}
+
+
+template <class T>
+void BestPart<T>::serialize(const string& dumpfile){
+
+}
+
+
+
+template <class T>
+BestPart<T> BestPart<T>::load(const string& existing_index){
+
+}
+
+
+
+
+template <class T>
+vector<uint32_t> BestPart<T>::query_sequence(const string& reference){
+    vector<uint32_t> result(current_level,0);
+    vector<T> colors;
+    auto V(get_super_kmers(reference));
+    for(uint32_t i = 0; i < V.size();++i){
+        // cout<<"query super kmer go"<<endl;
+        colors=query_keys(V[i].first, V[i].second);
+        // cout<<"query supe  r kmer OK"<<endl;
+        for(uint32_t j = 0; j <colors.size();++j){
+            result[colors[j]]++;
+        }
+    }
+    return result;
 }
 
 
@@ -238,3 +329,13 @@ void BestPart<T>::insert_file_of_file(const string filename){
 }
 
 
+template <class T>
+void BestPart<T>::get_stats()const{
+    uint64_t total = 0;
+    for(int i=0; i<bucket_number;++i){
+        total += buckets[i]->nb_insertions;
+        cout<<intToString(buckets[i]->nb_insertions)<<' ';
+    }
+    cout<<endl;
+    cout<<intToString(total)<<endl;
+}
