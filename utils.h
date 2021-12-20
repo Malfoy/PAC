@@ -24,6 +24,8 @@ string intToString(uint64_t n);
 
 uint64_t nuc2intrc(char c) ;
 
+int directory_exists(string& path);
+
 
 
 uint64_t str2numstrand(const string& str) ;
