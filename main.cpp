@@ -17,11 +17,11 @@ using namespace chrono;
 
 
 
-string fof(""), dump_index(""), query_file(""),existing_index("");
+string fof(""), dump_index(""), query_file(""),existing_index(""),query_output("output.gz");
 uint16_t nb_hash_func(1), bit_encoding(16);
 uint32_t kmer_size(31);
-uint64_t bf_size(100000000); //todo
-
+uint64_t bf_size(100000000); 
+bool use_double_index(false);
 
 
 void PrintHelp()
@@ -30,14 +30,15 @@ void PrintHelp()
 			"\n******************* Amazing tool **************************************\n"
 			"******************* Does something ******************\n"
 
-			"--help (-h)             :     Show help\n\n"
+			"--help (-h)              :     Show help\n\n"
 			"\n INDEX CONSTRUCION\n"
 			"--index (-i)             :     build index\n"
             "--load (-l)              :     load index from disk \n\n"
-			"--dump index (-d)         :     provide location to write index file\n"
+			"--dump index (-d)        :     provide location to write index file\n"
 			"--fof (-f)               :     provide file of files for index construction (FASTA/Q/GZ allowed in file of files)\n\n"
 			"\n INDEX QUERY\n"
 			"--query (-q)             :     provide sequence file (FASTA/Q/GZ) for the query\n"
+            "--out (-o)               :     Where to write query output (default: output.gz)\n"
 			
 			"\n OTHER OPTIONS\n"
 			"-k                       :     k-mer size (default: " << kmer_size << ")\n"
@@ -59,6 +60,7 @@ void ProcessArgs(int argc, char** argv)
 		{"index", no_argument, nullptr, 'i'},
 		{"fof", required_argument, nullptr, 'f'},
 		{"index_dir", required_argument, nullptr, 'd'},
+        {"out", required_argument, nullptr, 'o'},
 		{"help", no_argument, nullptr, 'h'},
 		{"query", required_argument, nullptr, 'q'},
 		{"load", required_argument, nullptr, 'l'},
@@ -73,6 +75,9 @@ void ProcessArgs(int argc, char** argv)
 
 		switch (opt)
 		{
+            case 'i':
+				use_double_index=true;
+				break;
 			case 'k':
 				kmer_size=stoi(optarg);
 				break;
@@ -84,6 +89,9 @@ void ProcessArgs(int argc, char** argv)
 				break;
 			case 'q':
 				query_file=optarg;
+				break;
+            case 'o':
+				query_output=optarg;
 				break;
 			case 'l':
 				existing_index=optarg;
@@ -123,6 +131,7 @@ void ProcessArgs(int argc, char** argv)
 
 int main(int argc, char **argv)
 {
+    omp_set_nested(3);
 	ProcessArgs(argc, argv);
 	if (argc < 2)
 	{
@@ -140,7 +149,57 @@ int main(int argc, char **argv)
     }
 
     //WE BUILD THE INDEX
-	if (fof!="")
+    if(existing_index != ""){
+        cout << "LOADING index from file " << existing_index << endl;
+        switch (bit_encoding)
+        {
+            case 8:
+            {
+                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
+                ever.load(existing_index);
+                if(fof!=""){
+                    ever.insert_file_of_file(fof);
+                }
+                 if(use_double_index){
+                    ever.double_index();
+                }
+                if(query_file!=""){
+                    ever.query_file(query_file,query_output);
+                }
+                break;
+            }
+            case 16:
+            {
+                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
+                ever.load(existing_index);
+                if(fof!=""){
+                    ever.insert_file_of_file(fof);
+                }
+                 if(use_double_index){
+                    ever.double_index();
+                }
+                if(query_file!=""){
+                    ever.query_file(query_file,query_output);
+                }
+                break;
+            }
+            case 32:
+            {
+                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
+                ever.load(existing_index);
+                if(fof!=""){
+                    ever.insert_file_of_file(fof);
+                }
+                 if(use_double_index){
+                    ever.double_index();
+                }
+                if(query_file!=""){
+                    ever.query_file(query_file,query_output);
+                }
+                break;
+            }
+        }
+    }else if (fof!="")
 	{
 		
 
@@ -153,8 +212,11 @@ int main(int argc, char **argv)
             {
                 BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
                 ever.insert_file_of_file(fof);
+                if(use_double_index){
+                    ever.double_index();
+                }
                 if(query_file!=""){
-                    ever.query_file(query_file);
+                    ever.query_file(query_file,query_output);
                 }
                 if(dump_index!=""){
                     ever.serialize(dump_index);
@@ -165,8 +227,11 @@ int main(int argc, char **argv)
             {
                 BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
                 ever.insert_file_of_file(fof);
+                if(use_double_index){
+                    ever.double_index();
+                }
                 if(query_file!=""){
-                    ever.query_file(query_file);
+                    ever.query_file(query_file,query_output);
                 }
                 if(dump_index!=""){
                     ever.serialize(dump_index);
@@ -177,8 +242,11 @@ int main(int argc, char **argv)
             {
                 BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
                 ever.insert_file_of_file(fof);
+                if(use_double_index){
+                    ever.double_index();
+                }
                 if(query_file!=""){
-                    ever.query_file(query_file);
+                    ever.query_file(query_file,query_output);
                 }
                 if(dump_index!=""){
                     ever.serialize(dump_index);
@@ -187,41 +255,7 @@ int main(int argc, char **argv)
             }
         }
 		return 0;
-	}else if(existing_index != ""){
-        cout << "LOADING index from file " << existing_index << endl;
-        switch (bit_encoding)
-        {
-            case 8:
-            {
-                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
-                ever.load(existing_index);
-                cout<<"Loaded8 "<<endl;
-                if(query_file!=""){
-                    ever.query_file(query_file);
-                }
-                break;
-            }
-            case 16:
-            {
-                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
-                ever.load(existing_index);
-                cout<<"Loaded16 "<<endl;
-                if(query_file!=""){
-                    ever.query_file(query_file);
-                }
-                break;
-            }
-            case 32:
-            {
-                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
-                ever.load(existing_index);
-                if(query_file!=""){
-                    ever.query_file(query_file);
-                }
-                break;
-            }
-        }
-    }
+	}else 
 	
 	return 0;
 }

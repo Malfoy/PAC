@@ -8,6 +8,8 @@
 #include <math.h>
 #include <cmath> 
 #include <string>
+#include <chrono>
+#include <ctime>
 
 
 
@@ -47,12 +49,10 @@ uint64_t unrevhash(uint64_t x) {
 
 
 template <class T>
-void BestPart<T>::insert_keys(const vector<uint64_t>& key,uint minimizer){
-    // cout<<key.size()<<endl;
-    // cin.get();
+void BestPart<T>::insert_keys(const vector<uint64_t>& key,uint minimizer,uint level){
     omp_set_lock(&mutex_array[minimizer]);
     for(uint i=0;i<key.size(); ++i){
-        buckets[minimizer]->insert_key(key[i]);
+        buckets[minimizer]->insert_key(key[i],level);
     }
     omp_unset_lock(&mutex_array[minimizer]);
 }
@@ -158,7 +158,6 @@ void BestPart<T>::change_level(){
     for(uint32_t i=0;i<bucket_number;++i){
         buckets[i]->change_level();
     }
-    current_level++;
 }
 
 
@@ -224,41 +223,51 @@ vector<pair<vector<uint64_t>,uint64_t> > BestPart<T>::get_super_kmers(const stri
 
 
 template <class T>
-void BestPart<T>::insert_sequence(const string& reference){
+void BestPart<T>::insert_sequence(const string& reference,uint level){
     auto V(get_super_kmers(reference));
+    #pragma omp parallel for
     for(uint32_t i = 0; i < V.size();++i){
-        insert_keys(V[i].first, V[i].second);
+        insert_keys(V[i].first, V[i].second,level);
     }
 }
 
 
 
 template <class T>
-void BestPart<T>::query_file(const string& filename){
-    cout<<"gi query file"<<endl;
-    zstr::ofstream out("output.gz",ios::binary);
+void BestPart<T>::query_file(const string& filename, const string& output){
+    cout<<"Query file "<<filename<<" in "<<output<<endl;
+    auto  start = chrono::system_clock::now();
+    zstr::ofstream out(output,ios::binary);
     char type=get_data_type(filename);
     zstr::ifstream in(filename);
     #pragma omp parallel
     {
-        string ref;
+        string ref,header;
         vector<uint32_t> colors_count;
         while(not in.eof()) {
             #pragma omp critical (inputfile)
             {
-             Biogetline(&in,ref,type,K);
+             Biogetline(&in,ref,type,K,header);
             }
             if(ref.size()>K) {
                 // cout<<"query_sequence part go"<<endl;
                 colors_count=query_sequence(ref);
                 //  cout<<"query_sequence  part end"<<endl;
-                for(int i=0;i<colors_count.size();i++){
-                    out<<colors_count[i]<<' ';
+                #pragma omp critical (output_file)
+                {   
+                    out<<header<<"\n";
+                    for(uint i=0;i<colors_count.size();i++){
+                        out<<colors_count[i]<<' ';
+                    }
+                    out<<"\n";
                 }
             }
         }
     }
     out.close();
+    auto end = std::chrono::system_clock::now();
+    chrono::duration<double> elapsed_seconds = end - start;
+    cout <<  "Query time: " << elapsed_seconds.count() << "s\n";
 }
 
 
@@ -271,15 +280,16 @@ void BestPart<T>::query_file(const string& filename){
 template <class T>
 vector<uint32_t> BestPart<T>::query_sequence(const string& reference){
     // cout<<"Query sequence go"<<endl;
-    vector<uint32_t> result(current_level,0);
-    vector<T> colors;
+    vector<uint32_t> result(leaf_number,0);
     auto V(get_super_kmers(reference));
+    #pragma omp parallel for
     for(uint32_t i = 0; i < V.size();++i){
         // cout<<"query super kmer go"<<endl;
-        colors=query_keys(V[i].first, V[i].second);
+        vector<T> colors=query_keys(V[i].first, V[i].second);
         // cout<<"query super kmer OK"<<endl;
         for(uint32_t j = 0; j <colors.size();++j){
-            result[colors[j]]++;
+            #pragma omp atomic
+                result[colors[j]]++;
         }
     }
     return result;
@@ -288,7 +298,7 @@ vector<uint32_t> BestPart<T>::query_sequence(const string& reference){
 
 
 template <class T>
-void  BestPart<T>::insert_file(const string filename){
+void  BestPart<T>::insert_file(const string filename,uint level){
     char type=get_data_type(filename);
     zstr::ifstream in(filename);
     #pragma omp parallel
@@ -300,7 +310,7 @@ void  BestPart<T>::insert_file(const string filename){
                 Biogetline(&in,ref,type,K);
             }
             if(ref.size()>K) {
-                insert_sequence(ref);
+                insert_sequence(ref,level);
             }
         }
     }
@@ -311,23 +321,37 @@ void  BestPart<T>::insert_file(const string filename){
 
 template <class T>
 void BestPart<T>::insert_file_of_file(const string filename){
+    cout<<"Insert file of file "<<filename<<endl;
+    auto  start = chrono::system_clock::now();
+    uint i = 0;
     zstr::ifstream in(filename);
-    string ref;
-    while(not in.eof()) {
-        getline(in,ref);
-        if(exists_test(ref)) {
-            cout<<"go insert_file"<<endl;
-            insert_file(ref);
-            change_level();
+    #pragma omp parallel
+    {
+        string ref;
+        uint level;
+        while(not in.eof()) {
+            #pragma omp critical (inputfile)
+            {
+                getline(in,ref);
+                level=i;
+                i++;
+            }
+            if(exists_test(ref)) {
+                insert_file(ref,level);
+            }
         }
     }
+    index();
+    auto  end = chrono::system_clock::now();
+    chrono::duration<double> elapsed_seconds = end - start;
+    cout <<  "Index time: " << elapsed_seconds.count() << "s\n";
 }
 
 
 template <class T>
 void BestPart<T>::get_stats()const{
     uint64_t total = 0;
-    for(int i=0; i<bucket_number;++i){
+    for(uint i=0; i<bucket_number;++i){
         total += buckets[i]->nb_insertions;
         cout<<intToString(buckets[i]->nb_insertions)<<' ';
     }
@@ -339,18 +363,18 @@ void BestPart<T>::get_stats()const{
 
 template <class T>
 void BestPart<T>::serialize(const string& filename)const{
+    cout<<"Dump the index in "<<filename<<endl;
     filebuf fb;
     fb.open(filename, ios::out | ios::binary | ios::trunc);
 	zstr::ostream out(&fb);
     // VARIOUS INTEGERS
 	out.write(reinterpret_cast<const char*>(&K), sizeof(K));
-    out.write(reinterpret_cast<const char*>(&current_level), sizeof(current_level));
     out.write(reinterpret_cast<const char*>(&leaf_filters_size), sizeof(leaf_filters_size));
     out.write(reinterpret_cast<const char*>(&trunk_size), sizeof(trunk_size));
     out.write(reinterpret_cast<const char*>(&number_hash_function), sizeof(number_hash_function));
     out.write(reinterpret_cast<const char*>(&small_minimizer_size), sizeof(small_minimizer_size));
     out.write(reinterpret_cast<const char*>(&large_minimizer_size), sizeof(large_minimizer_size));
-    // cout<<K<<" "<<current_level<<leaf_filters_size<<" "<<trunk_size<<" "<<number_hash_function<<" "<<small_minimizer_size<<" "<<large_minimizer_size<<endl;
+    // cout<<K<<" "<<leaf_filters_size<<" "<<trunk_size<<" "<<number_hash_function<<" "<<small_minimizer_size<<" "<<large_minimizer_size<<endl;
     //buckets
     for(size_t i = 0; i <buckets.size(); ++i){
         buckets[i]->serialize(&out);
@@ -366,13 +390,12 @@ void BestPart<T>::load(const string& existing_index){
     zstr::ifstream in(existing_index);
      // VARIOUS INTEGERS
     in.read(reinterpret_cast< char*>(&K), sizeof(K));
-    in.read(reinterpret_cast< char*>(&current_level), sizeof(current_level));
     in.read(reinterpret_cast< char*>(&leaf_filters_size), sizeof(leaf_filters_size));
     in.read(reinterpret_cast< char*>(&trunk_size), sizeof(trunk_size));
     in.read(reinterpret_cast< char*>(&number_hash_function), sizeof(number_hash_function));
     in.read(reinterpret_cast< char*>(&small_minimizer_size), sizeof(small_minimizer_size));
     in.read(reinterpret_cast< char*>(&large_minimizer_size), sizeof(large_minimizer_size));
-    // cout<<K<<" "<<current_level<<leaf_filters_size<<" "<<trunk_size<<" "<<number_hash_function<<" "<<small_minimizer_size<<" "<<large_minimizer_size<<endl;
+    // cout<<K<<" "<<leaf_filters_size<<" "<<trunk_size<<" "<<number_hash_function<<" "<<small_minimizer_size<<" "<<large_minimizer_size<<endl;
     bucket_number=1<<(2*small_minimizer_size);
     large_minimizer_number=1<<(2*large_minimizer_size);
     mutex_array=new omp_lock_t[bucket_number];
@@ -391,9 +414,29 @@ void BestPart<T>::load(const string& existing_index){
         // cout<<"GO LOAD BEST"<<endl;
         buckets[i]=new Best<T>(trunk_size/bucket_number,leaf_filters_size/bucket_number,number_hash_function,K);
         // cout<<"init"<<endl;
-        buckets[i]->current_level=current_level;
         buckets[i]->load(&in);
         // cout<<"END LOAD BEST"<<endl;
     }
     // cout<<"WTFlafin"<<endl;
+}
+
+
+template <class T>
+void BestPart<T>::index(){
+    #pragma omp parallel for
+    for(uint i=0;i<buckets.size();++i){
+        buckets[i]->construct_trunk();
+        buckets[i]->optimize();
+    }
+    leaf_number=buckets[0]->leaf_filters.size();
+}
+
+
+template <class T>
+void BestPart<T>::double_index(){
+    cout<<"Construct double trunk for faster queries"<<endl;
+    #pragma omp parallel for
+    for(uint i=0;i<buckets.size();++i){
+        buckets[i]->construct_reverse_trunk();
+    }
 }

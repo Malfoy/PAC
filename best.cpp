@@ -14,10 +14,33 @@
 using namespace std;
 
 
+template <class T>
+void Best<T>::construct_reverse_trunk(){
+    reverse_trunk=new ExponentialBloom<T>(trunk_size,number_hash_function);
+    for(int i = leaf_filters.size()-1; i>=0; i--){
+        insert_last_leaf_trunk(i,reverse_trunk);
+    }
+}
+
 
 template <class T>
-void Best<T>::insert_key(const uint64_t key){
-    leaf_filters[current_level]->insert_key(key);
+void Best<T>::construct_trunk(){
+    trunk=new ExponentialBloom<T>(trunk_size,number_hash_function);
+    for(uint i = 0; i<leaf_filters.size(); i++){
+        insert_last_leaf_trunk(i,trunk);
+    }
+}
+
+
+
+template <class T>
+void Best<T>::insert_key(const uint64_t key,uint level){
+    if(level>=leaf_filters.size()){ 
+        for(uint i(leaf_filters.size()-1);i<level;i++){
+            leaf_filters.push_back(new Bloom(leaf_filters_size,number_hash_function));
+        }
+    }
+    leaf_filters[level]->insert_key(key);
     nb_insertions++;
 }
 
@@ -25,6 +48,7 @@ void Best<T>::insert_key(const uint64_t key){
 
 template <class T>
 void Best<T>::optimize(){
+    #pragma omp parallel for
     for(uint64_t i = 0; i <leaf_filters.size();++i){
         leaf_filters[i]->optimize();
     }
@@ -65,61 +89,54 @@ void Best<T>::update_kmer_RC(uint64_t& min, char nuc)const {
 
 
 template <class T>
-void Best<T>::insert_last_leaf_trunk(){
-    Bloom* leon(leaf_filters[current_level]);
+void Best<T>::insert_last_leaf_trunk(uint level,ExponentialBloom<T>* EB){
+    Bloom* leon(leaf_filters[level]);
     auto value = leon->filter.get_first();
     uint64_t i=0;
     for(;i<leon->size and i<value;++i){
-        if(trunk->filter[i]!=0){
-            trunk->filter[i]++;
+        if(EB->filter[i]!=0){
+            EB->filter[i]++;
         }
     }
-    trunk->filter[value]++;
+    EB->filter[value]++;
     i++;
     do{
         value = leon->filter.get_next(value);
         if (value){
             for(;i<leon->size and i<value;++i){
-                if(trunk->filter[i]!=0){
-                    trunk->filter[i]++;
+                if(EB->filter[i]!=0){
+                    EB->filter[i]++;
                 }
             }
-            trunk->filter[value]++;
+            EB->filter[value]++;
             i++;
         }else{
             break;
         }
     } while(true);
     for( ;i<leon->size;++i){
-        if(trunk->filter[i]!=0){
-            trunk->filter[i]++;
+        if(EB->filter[i]!=0){
+            EB->filter[i]++;
         }
     }
 }
 
 
 
-template <class T>
-void Best<T>::change_level(){
-    insert_last_leaf_trunk();
-    leaf_filters[current_level]->optimize();
-    current_level++;
-    leaf_filters.push_back(new Bloom(leaf_filters_size,number_hash_function));
-}
 
 
 
-template <class T>
-void Best<T>::insert_sequence(const string& reference) {
-  uint64_t S_kmer(str2numstrand(reference.substr(0,K-1)));//get the first kmer (k-1 bases)
-  uint64_t RC_kmer(rcb(S_kmer));//The reverse complement
-  for(uint i(0);i+K<reference.size();++i) {// all kmer in the genome
-    update_kmer(S_kmer,reference[i+K-1]);
-    update_kmer_RC(RC_kmer,reference[i+K-1]);
-    uint64_t canon(min(S_kmer,RC_kmer));//Kmer min, the one selected
-    insert_key(canon);
-  }
-}
+// template <class T>
+// void Best<T>::insert_sequence(const string& reference) {
+//   uint64_t S_kmer(str2numstrand(reference.substr(0,K-1)));//get the first kmer (k-1 bases)
+//   uint64_t RC_kmer(rcb(S_kmer));//The reverse complement
+//   for(uint i(0);i+K<reference.size();++i) {// all kmer in the genome
+//     update_kmer(S_kmer,reference[i+K-1]);
+//     update_kmer_RC(RC_kmer,reference[i+K-1]);
+//     uint64_t canon(min(S_kmer,RC_kmer));//Kmer min, the one selected
+//     insert_key(canon);
+//   }
+// }
 
 
 
@@ -165,9 +182,16 @@ template <class T>
 vector<T> Best<T>::query_key(const uint64_t key){
     // cout<<"QUERY KEY GO"<<endl;
     vector<T> result;
-    uint level=trunk->check_key(key);
+    int min_level=0;
+    if(trunk!=NULL){
+        min_level=leaf_filters.size()-trunk->check_key(key);
+    }
+    int max_level=leaf_filters.size();
+    if(reverse_trunk!=NULL){
+        max_level=reverse_trunk->check_key(key);
+    }
     //  cout<<"CHEY KEY OK"<<endl;
-    for(int i=level-1;i>=0;i--){
+    for(int i=min_level;i<max_level;i++){
         // cout<<leaf_filters.size()<<" "<<i<<endl;
         if(leaf_filters[i]->check_key(key)){
             result.push_back(i);
@@ -188,7 +212,7 @@ void Best<T>::serialize(zstr::ostream* out)const{
 	bvs.byte_order_serialization(false);
 	bvs.gap_length_serialization(false);
 	bm::serializer<bm::bvector<> >::buffer sbuf;
-    for(int i = 0; i < current_level; ++i){
+    for(uint i = 0; i < leaf_filters.size(); ++i){
         unsigned char* buf = 0;
 		bvs.serialize(leaf_filters[i]->filter, sbuf);
 		buf         = sbuf.data();
@@ -207,7 +231,7 @@ void Best<T>::load(zstr::ifstream* out){
     // cout<<trunk_size<<endl;
     out->read((char*)point, sizeof(T)*trunk_size);
     // cout<<"read trunk"<<endl;
-    for(int i = 0; i < current_level; ++i){
+    for(uint i = 0; i < leaf_filters.size(); ++i){
         // cout<<"go leaf"<<endl;
         uint64_t sz;
         out->read(reinterpret_cast<char*>(&sz), sizeof(sz));
@@ -227,7 +251,7 @@ void Best<T>::load(zstr::ifstream* out){
 
 template <class T>
 void Best<T>::get_stats()const{
-    vector<uint> histograms(current_level,0);
+    vector<uint> histograms(leaf_filters.size(),0);
     for(uint64_t i=0; i<trunk_size;++i){
         histograms[trunk->filter[i]]++;
     }

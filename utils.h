@@ -45,6 +45,7 @@ uint64_t hash_family(uint64_t& key,uint b);
 
 
 void Biogetline(zstr::ifstream* in,string& result,char type,uint K) ;
+void Biogetline(zstr::ifstream* in,string& result,char type,uint K,string& header);
 
 
 

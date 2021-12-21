@@ -129,6 +129,33 @@ void Biogetline(zstr::ifstream* in,string& result,char type,uint K) {
 }
 
 
+void Biogetline(zstr::ifstream* in,string& result,char type,uint K,string& header) {
+  string discard;
+  result.clear();
+  switch(type){
+    case 'Q':
+      getline(*in,header);
+      getline(*in,result);
+      getline(*in,discard);
+      getline(*in,discard);
+      break;
+    case 'A':
+      getline(*in,header);
+      char c=in->peek();
+      while(c!='>' and c!=EOF){
+        getline(*in,discard);
+        result+=discard;
+        c=in->peek();
+      }
+      break;
+  }
+  if(result.size()< K){
+    result.clear();
+    header.clear();
+  }
+}
+
+
 
 char get_data_type(const string& filename){
   if(filename.find(".fq")!=string::npos){

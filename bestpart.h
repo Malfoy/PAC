@@ -9,10 +9,12 @@
 #include <vector>
 #include <math.h>
 #include <cmath> 
+#include <omp.h> 
 
 
 
 using namespace std;
+
 
 
 
@@ -22,7 +24,6 @@ class BestPart{
 public:
     vector< Best<T>* > buckets;
     omp_lock_t* mutex_array;
-    uint current_level;
     uint K;
     uint64_t offsetUpdatekmer;
     uint64_t offsetUpdateminimizer;
@@ -33,6 +34,7 @@ public:
     uint large_minimizer_size;
     uint bucket_number;
     uint large_minimizer_number;
+    uint leaf_number;
 
 
 
@@ -40,7 +42,7 @@ public:
         K=Ik;
         small_minimizer_size=5;
         bucket_number=1<<(2*small_minimizer_size);
-        large_minimizer_size=small_minimizer_size+3;
+        large_minimizer_size=small_minimizer_size+2;
         large_minimizer_number=1<<(2*large_minimizer_size);
         trunk_size=Itrunk_size;
         leaf_filters_size=Ileaf_filters_size;
@@ -51,7 +53,6 @@ public:
             buckets[i]=new Best<T>(trunk_size/bucket_number,leaf_filters_size/bucket_number,number_hash_function,K);
             omp_init_lock(&mutex_array[i]);
         }
-        current_level=0;
         offsetUpdatekmer=1;
         offsetUpdatekmer<<=2*K;
         offsetUpdateminimizer=1;
@@ -64,6 +65,7 @@ public:
         for(uint32_t i=0;i<bucket_number;++i){
             delete buckets[i];
         }
+        delete mutex_array;
     }
 
 
@@ -78,20 +80,22 @@ public:
     void insert_last_leaf_trunk();
     uint64_t regular_minimizer_pos(uint64_t seq, uint64_t& position);
     uint64_t canonize(uint64_t x, uint64_t n);
-    void insert_keys(const vector<uint64_t>& key,uint minimizer);
+    void insert_keys(const vector<uint64_t>& key,uint minimizer,uint level);
     vector<T> query_keys(const vector<uint64_t>& key,uint minimizer);
     vector<pair<vector<uint64_t>,uint64_t> > get_super_kmers(const string& ref);
     //HIGH LEVEL FUNCTIONS
-    void insert_sequence(const string& reference) ;
-    void insert_file(const string filename);
+    void insert_sequence(const string& reference,uint level) ;
+    void insert_file(const string filename,uint level);
     void insert_file_of_file(const string filename);
     vector<uint> query_key(const uint64_t key);
     vector<uint32_t> query_sequence(const string& reference);
     void get_stats()const;
     void optimize();
-    void query_file(const string& reference);
+    void query_file(const string& reference,const string& output);
     void serialize(const string& filename)const;
     void load(const string& existing_index);
+    void index();
+    void double_index();
 };
 
 template class BestPart<uint8_t>;

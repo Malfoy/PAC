@@ -21,7 +21,7 @@ class Best{
 public:
     vector<Bloom*> leaf_filters;
     ExponentialBloom<T>* trunk;
-    uint current_level;
+    ExponentialBloom<T>* reverse_trunk;
     uint K;
     uint64_t offsetUpdatekmer;
     uint64_t leaf_filters_size;
@@ -36,8 +36,8 @@ public:
         trunk_size=Itrunk_size;
         leaf_filters_size=Ileaf_filters_size;
         number_hash_function=Inumber_hash_function;
-        trunk=new ExponentialBloom<T>(trunk_size,number_hash_function);
-        current_level=0;
+        trunk=NULL;
+        reverse_trunk=NULL;
         offsetUpdatekmer=1;
         offsetUpdatekmer<<=2*K;
         nb_insertions=0;
@@ -47,22 +47,22 @@ public:
 
 
     ~Best(){
-        delete trunk;
+        if(trunk!=NULL){delete trunk;}
+        if(reverse_trunk!=NULL){delete reverse_trunk;}
         for(uint i=0;i<leaf_filters.size();++i){
             delete leaf_filters[i];
         }
-
     }
 
 
     //LOW LEVEL FUNCTIONS
-    void insert_key(const uint64_t key);
+    void insert_key(const uint64_t key,uint level);
     void change_level();
     void check_key_leaf(const uint64_t key,const uint level)const;
     uint64_t rcb(uint64_t min)const;
     void update_kmer(uint64_t& min, char nuc)const;
     void update_kmer_RC(uint64_t& min, char nuc)const;
-    void insert_last_leaf_trunk();
+    void insert_last_leaf_trunk(uint level,ExponentialBloom<T>* EB);
     void load(zstr::ifstream* out);
 
     //HIGH LEVEL FUNCTIONS
@@ -71,6 +71,8 @@ public:
     void insert_file_of_file(const string filename);
     vector<T> query_key(const uint64_t key);
     vector<uint> query_sequence(const string& reference);
+    void construct_reverse_trunk();
+    void construct_trunk();
     void get_stats()const;
     void serialize(zstr::ostream* out)const;
     void optimize();

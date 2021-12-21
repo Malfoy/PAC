@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS= -Wall -Ofast -std=c++11  -flto -pipe -funit-at-a-time -fopenmp -lz -Isparsepp -flto
+CFLAGS= -Wall -Ofast -std=c++17  -flto -pipe -funit-at-a-time -fopenmp -lz -Isparsepp -flto
 LDFLAGS=-flto -lpthread -fopenmp -lz  -Isparsepp  -flto
 LIBS=utils.h Bloom.h  ExponentialBloom.h bcardi.h best.h bestpart.h
 EXEC=bcardi best
