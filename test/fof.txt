@@ -1,0 +1,2 @@
+test/SRR10092187_10k.unitigs.fa
+test/SRR10092188_10k.unitigs.fa
