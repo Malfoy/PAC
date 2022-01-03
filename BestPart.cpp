@@ -342,9 +342,16 @@ void BestPart<T>::insert_file_of_file(const string filename){
         }
     }
     index();
+    auto  middle = chrono::system_clock::now();
+    chrono::duration<double> elapsed_seconds = middle - start;
+    cout <<  "Bloom construction time: " << elapsed_seconds.count() << "s\n";
+    
+    index();
     auto  end = chrono::system_clock::now();
-    chrono::duration<double> elapsed_seconds = end - start;
-    cout <<  "Index time: " << elapsed_seconds.count() << "s\n";
+    elapsed_seconds = end - middle;
+    cout <<  "Exponential Bloom construction time: " << elapsed_seconds.count() << "s\n";
+    elapsed_seconds = end - start;
+    cout <<  "Total Index time: " << elapsed_seconds.count() << "s\n";
 }
 
 
