@@ -98,7 +98,7 @@ void ProcessArgs(int argc, char** argv)
 				existing_index=optarg;
 				break;
 			case 'b':
-				bf_size=stoi(optarg);
+				bf_size=stoull(optarg);
 				break;
 			case 'n':
 				nb_hash_func=stoi(optarg);
