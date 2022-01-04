@@ -40,9 +40,9 @@ public:
 
     BestPart(const uint64_t Itrunk_size,const uint64_t Ileaf_filters_size,const uint Inumber_hash_function,const uint Ik){
         K=Ik;
-        small_minimizer_size=5;
+        small_minimizer_size=4;
         bucket_number=1<<(2*small_minimizer_size);
-        large_minimizer_size=small_minimizer_size+2;
+        large_minimizer_size=small_minimizer_size+3;
         large_minimizer_number=1<<(2*large_minimizer_size);
         trunk_size=Itrunk_size;
         leaf_filters_size=Ileaf_filters_size;
@@ -65,7 +65,7 @@ public:
         for(uint32_t i=0;i<bucket_number;++i){
             delete buckets[i];
         }
-        delete mutex_array;
+        delete [] mutex_array;
     }
 
 
@@ -96,6 +96,7 @@ public:
     void load(const string& existing_index);
     void index();
     void double_index();
+    void add_leaf();
 };
 
 template class BestPart<uint8_t>;

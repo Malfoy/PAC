@@ -27,24 +27,25 @@ bool use_double_index(false);
 void PrintHelp()
 {
 	cout <<
-			"\n******************* Amazing tool **************************************\n"
-			"******************* Does something ******************\n"
+			"\n******************* ABC **************************************\n"
 
 			"--help (-h)              :     Show help\n\n"
-			"\n INDEX CONSTRUCION\n"
-			"--index (-i)             :     build index\n"
-            "--load (-l)              :     load index from disk \n\n"
-			"--dump index (-d)        :     provide location to write index file\n"
-			"--fof (-f)               :     provide file of files for index construction (FASTA/Q/GZ allowed in file of files)\n\n"
-			"\n INDEX QUERY\n"
-			"--query (-q)             :     provide sequence file (FASTA/Q/GZ) for the query\n"
-            "--out (-o)               :     Where to write query output (default: output.gz)\n"
+
+			"\n INDEX CONSTRUCTION\n"
+            "--fof (-f)               :     Build index from file of files (FASTA/Q/GZ allowed in file of files)\n\n"
+            "--load (-l)              :     Load index from file \n\n"
+			"--dump (-d)              :     Write index in file\n"
 			
-			"\n OTHER OPTIONS\n"
+			"\n INDEX QUERY\n"
+			"--query (-q)             :     Query sequence file (FASTA/Q/GZ)\n"
+            "--out (-o)               :     Write query output in file (default: output.gz)\n"
+			
+			"\n TWEAK PARAMETERS\n"
 			"-k                       :     k-mer size (default: " << kmer_size << ")\n"
-			"-b                       :     Bloom filter size (default " << bf_size << ")\n"
-			"-n                       :     Bloom filter's number of hash functions (default: " << nb_hash_func << ")\n"
-			"-e                       :     bit encoding (possible values 8,16,32, default: " << bit_encoding << ")\n";
+			"-b                       :     Bloom filter size (default " << intToString(bf_size) << ")\n"
+			"-n                       :     Bloom filter's number of hash functions (default: " << intToString( nb_hash_func) << ")\n"
+			"-e                       :     Bit encoding, possible values are 8 (max 256 files), 16 (max 16,384 files), 32 (Max 4,294,967,296 files) (default: " << bit_encoding << ")\n"
+            "-i                       :     Build double index for faster queries \n";
 
 	exit(1);
 }
@@ -59,7 +60,7 @@ void ProcessArgs(int argc, char** argv)
 	{
 		{"index", no_argument, nullptr, 'i'},
 		{"fof", required_argument, nullptr, 'f'},
-		{"index_dir", required_argument, nullptr, 'd'},
+		{"dump", required_argument, nullptr, 'd'},
         {"out", required_argument, nullptr, 'o'},
 		{"help", no_argument, nullptr, 'h'},
 		{"query", required_argument, nullptr, 'q'},
@@ -131,7 +132,8 @@ void ProcessArgs(int argc, char** argv)
 
 int main(int argc, char **argv)
 {
-    omp_set_nested(3);
+    omp_set_nested(1);
+    // omp_set_num_threads(1);
 	ProcessArgs(argc, argv);
 	if (argc < 2)
 	{

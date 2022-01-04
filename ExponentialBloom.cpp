@@ -6,11 +6,9 @@ template <class T>
 void ExponentialBloom<T>::insert_key(uint64_t key,uint level){
     for(uint64_t i=0; i<number_hash_functions;++i){
         uint64_t h=hash_family(key,i)%size;//TODO SIZE POWER OF TWO
-        omp_set_lock(&lock[h%1024]);
+        // omp_set_lock(&lock[h%1024]);
         if(filter[h]==level){
             filter[h]++;
-            level_bit_set[level]++;
-            // cout<<"SALUT C COOL"<<endl;cin.get();
         }else if(filter[h]>level+1){
             cout<<"ERROR 1"<<endl;
         }else if(filter[h]<level){
@@ -18,7 +16,7 @@ void ExponentialBloom<T>::insert_key(uint64_t key,uint level){
             cout<<(uint)filter[h]<<" "<<level<<endl;
             cin.get();
         }
-        omp_unset_lock(&lock[h%1024]);
+        // omp_unset_lock(&lock[h%1024]);
     }
 }
 
@@ -49,8 +47,3 @@ bool ExponentialBloom<T>::check_key(uint64_t key,uint level)const{
     return true;
 }
 
-template <class T>
-uint64_t ExponentialBloom<T>::get_cardinality(uint level)const{
-    cout<<level_bit_set[level]<<endl;
-    return level_bit_set[level]/number_hash_functions;
-}

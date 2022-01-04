@@ -76,6 +76,8 @@ public:
     void get_stats()const;
     void serialize(zstr::ostream* out)const;
     void optimize();
+    void optimize(uint i);
+    void add_leaf();
 };
 
 template class Best<uint8_t>;

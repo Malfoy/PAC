@@ -50,12 +50,14 @@ uint64_t unrevhash(uint64_t x) {
 
 template <class T>
 void BestPart<T>::insert_keys(const vector<uint64_t>& key,uint minimizer,uint level){
-    omp_set_lock(&mutex_array[minimizer]);
+    //TODO CAN BE IMPROVED ADDING LEVEL INFORMATION
+    // omp_set_lock(&mutex_array[minimizer]);
     for(uint i=0;i<key.size(); ++i){
         buckets[minimizer]->insert_key(key[i],level);
     }
-    omp_unset_lock(&mutex_array[minimizer]);
+    // omp_unset_lock(&mutex_array[minimizer]);
 }
+
 
 
 template <class T>
@@ -222,10 +224,11 @@ vector<pair<vector<uint64_t>,uint64_t> > BestPart<T>::get_super_kmers(const stri
 }
 
 
+
 template <class T>
 void BestPart<T>::insert_sequence(const string& reference,uint level){
     auto V(get_super_kmers(reference));
-    #pragma omp parallel for
+    // #pragma omp parallel for
     for(uint32_t i = 0; i < V.size();++i){
         insert_keys(V[i].first, V[i].second,level);
     }
@@ -298,14 +301,14 @@ vector<uint32_t> BestPart<T>::query_sequence(const string& reference){
 
 
 template <class T>
-void  BestPart<T>::insert_file(const string filename,uint level){
+void  BestPart<T>::insert_file(const string filename, uint level){
     char type=get_data_type(filename);
     zstr::ifstream in(filename);
-    #pragma omp parallel
+    // #pragma omp parallel
     {
         string ref;
         while(not in.eof()) {
-            #pragma omp critical (inputfile)
+            // #pragma omp critical (inputfile)
             {
                 Biogetline(&in,ref,type,K);
             }
@@ -313,6 +316,11 @@ void  BestPart<T>::insert_file(const string filename,uint level){
                 insert_sequence(ref,level);
             }
         }
+    }
+
+    // #pragma omp parallel for
+    for(uint i=0;i<buckets.size();++i){
+        buckets[i]->optimize(level);
     }
     
 }
@@ -335,13 +343,16 @@ void BestPart<T>::insert_file_of_file(const string filename){
                 getline(in,ref);
                 level=i;
                 i++;
+                add_leaf();
             }
             if(exists_test(ref)) {
                 insert_file(ref,level);
+                if(level%100==0){
+                    cout<<level<<" files"<<endl;
+                }
             }
         }
     }
-    index();
     auto  middle = chrono::system_clock::now();
     chrono::duration<double> elapsed_seconds = middle - start;
     cout <<  "Bloom construction time: " << elapsed_seconds.count() << "s\n";
@@ -353,6 +364,7 @@ void BestPart<T>::insert_file_of_file(const string filename){
     elapsed_seconds = end - start;
     cout <<  "Total Index time: " << elapsed_seconds.count() << "s\n";
 }
+
 
 
 template <class T>
@@ -381,7 +393,6 @@ void BestPart<T>::serialize(const string& filename)const{
     out.write(reinterpret_cast<const char*>(&number_hash_function), sizeof(number_hash_function));
     out.write(reinterpret_cast<const char*>(&small_minimizer_size), sizeof(small_minimizer_size));
     out.write(reinterpret_cast<const char*>(&large_minimizer_size), sizeof(large_minimizer_size));
-    // cout<<K<<" "<<leaf_filters_size<<" "<<trunk_size<<" "<<number_hash_function<<" "<<small_minimizer_size<<" "<<large_minimizer_size<<endl;
     //buckets
     for(size_t i = 0; i <buckets.size(); ++i){
         buckets[i]->serialize(&out);
@@ -389,6 +400,7 @@ void BestPart<T>::serialize(const string& filename)const{
     out<<flush;
     fb.close();
 }
+
 
 
 template <class T>
@@ -402,7 +414,6 @@ void BestPart<T>::load(const string& existing_index){
     in.read(reinterpret_cast< char*>(&number_hash_function), sizeof(number_hash_function));
     in.read(reinterpret_cast< char*>(&small_minimizer_size), sizeof(small_minimizer_size));
     in.read(reinterpret_cast< char*>(&large_minimizer_size), sizeof(large_minimizer_size));
-    // cout<<K<<" "<<leaf_filters_size<<" "<<trunk_size<<" "<<number_hash_function<<" "<<small_minimizer_size<<" "<<large_minimizer_size<<endl;
     bucket_number=1<<(2*small_minimizer_size);
     large_minimizer_number=1<<(2*large_minimizer_size);
     mutex_array=new omp_lock_t[bucket_number];
@@ -415,17 +426,13 @@ void BestPart<T>::load(const string& existing_index){
     }
 
     buckets.resize(bucket_number,NULL);
-    // cout<<"LOAD Best part seem ok"<<endl;
     //buckets
     for(size_t i = 0; i <buckets.size(); ++i){
-        // cout<<"GO LOAD BEST"<<endl;
         buckets[i]=new Best<T>(trunk_size/bucket_number,leaf_filters_size/bucket_number,number_hash_function,K);
-        // cout<<"init"<<endl;
         buckets[i]->load(&in);
-        // cout<<"END LOAD BEST"<<endl;
     }
-    // cout<<"WTFlafin"<<endl;
 }
+
 
 
 template <class T>
@@ -433,10 +440,10 @@ void BestPart<T>::index(){
     #pragma omp parallel for
     for(uint i=0;i<buckets.size();++i){
         buckets[i]->construct_trunk();
-        buckets[i]->optimize();
     }
     leaf_number=buckets[0]->leaf_filters.size();
 }
+
 
 
 template <class T>
@@ -445,5 +452,14 @@ void BestPart<T>::double_index(){
     #pragma omp parallel for
     for(uint i=0;i<buckets.size();++i){
         buckets[i]->construct_reverse_trunk();
+    }
+}
+
+
+template <class T>
+void BestPart<T>::add_leaf(){
+    #pragma omp parallel for
+    for(uint i=0;i<buckets.size();++i){
+        buckets[i]->add_leaf();
     }
 }

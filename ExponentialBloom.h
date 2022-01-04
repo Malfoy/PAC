@@ -31,7 +31,6 @@ public:
     ExponentialBloom(const uint64_t Isize, const uint Inumber_hash_functions){
         size=Isize;
         number_hash_functions=Inumber_hash_functions;
-        level_bit_set.resize(256,0);
         filter.resize(size,0);
         for(uint32_t i=0; i<1024;++i) {
             omp_init_lock(&lock[i]);
