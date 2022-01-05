@@ -20,6 +20,7 @@ template <class T>
 class Best{
 public:
     vector<Bloom*> leaf_filters;
+    string prefix;
     bool filter;
     Bloom* protection;
     ExponentialBloom<T>* trunk;
@@ -33,8 +34,9 @@ public:
 
 
 
-    Best(const uint64_t Itrunk_size,const uint64_t Ileaf_filters_size,const uint Inumber_hash_function,const uint Ik){
+    Best(const uint64_t Itrunk_size,const uint64_t Ileaf_filters_size,const uint Inumber_hash_function,const uint Ik,const string Iprefix){
         K=Ik;
+        prefix=Iprefix;
         trunk_size=Itrunk_size;
         leaf_filters_size=Ileaf_filters_size;
         number_hash_function=Inumber_hash_function;
@@ -43,7 +45,6 @@ public:
         offsetUpdatekmer=1;
         offsetUpdatekmer<<=2*K;
         nb_insertions=0;
-        leaf_filters.push_back(new Bloom(leaf_filters_size,number_hash_function));
     }
 
 
@@ -80,7 +81,9 @@ public:
     void serialize(zstr::ostream* out)const;
     void optimize();
     void optimize(uint i);
+    void dump(uint i);
     void add_leaf();
+    void free_ram();
 };
 
 template class Best<uint8_t>;

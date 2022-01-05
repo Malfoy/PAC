@@ -36,13 +36,15 @@ public:
     uint large_minimizer_number;
     uint leaf_number;
     bool filter;
+    bool hot;
 
 
 
-    BestPart(const uint64_t Itrunk_size,const uint64_t Ileaf_filters_size,const uint Inumber_hash_function,const uint Ik, bool Ifilter){
+    BestPart(const uint64_t Itrunk_size,const uint64_t Ileaf_filters_size,const uint Inumber_hash_function,const uint Ik, bool Ifilter,bool Ihot){
         K=Ik;
+        hot=Ihot;
         filter=Ifilter;
-        small_minimizer_size=4;
+        small_minimizer_size=3;
         bucket_number=1<<(2*small_minimizer_size);
         large_minimizer_size=small_minimizer_size+3;
         large_minimizer_number=1<<(2*large_minimizer_size);
@@ -52,7 +54,7 @@ public:
         buckets.resize(bucket_number,NULL);
         mutex_array=new omp_lock_t[bucket_number];
         for(uint32_t i=0;i<bucket_number;++i){
-            buckets[i]=new Best<T>(trunk_size/bucket_number,leaf_filters_size/bucket_number,number_hash_function,K);
+            buckets[i]=new Best<T>(trunk_size/bucket_number,leaf_filters_size/bucket_number,number_hash_function,K,"Leon"+to_string(i));
             omp_init_lock(&mutex_array[i]);
         }
         offsetUpdatekmer=1;

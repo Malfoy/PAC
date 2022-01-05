@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <chrono>
 #include <getopt.h>
-#include "bcardi.h"
 #include "best.h"
 #include "bestpart.h"
 
@@ -21,7 +20,7 @@ string fof(""), dump_index(""), query_file(""),existing_index(""),query_output("
 uint16_t nb_hash_func(1), bit_encoding(16);
 uint32_t kmer_size(31);
 uint64_t bf_size(100000000); 
-bool use_double_index(false),filter_unique(false);
+bool use_double_index(false),filter_unique(false),hot(false);
 
 
 void PrintHelp()
@@ -29,12 +28,12 @@ void PrintHelp()
 	cout <<
 			"\n******************* ABC **************************************\n"
 
-			"--help (-h)              :     Show help\n\n"
 
 			"\n INDEX CONSTRUCTION\n"
             "--fof (-f)               :     Build index from file of files (FASTA/Q/GZ allowed in file of files)\n\n"
             "--load (-l)              :     Load index from file \n\n"
 			"--dump (-d)              :     Write index in file\n"
+            "--hot (-h)               :     Keep all Bloom in RAM, (fast but expensive mode)\n"
 			
 			"\n INDEX QUERY\n"
 			"--query (-q)             :     Query sequence file (FASTA/Q/GZ)\n"
@@ -63,7 +62,7 @@ void ProcessArgs(int argc, char** argv)
 		{"fof", required_argument, nullptr, 'f'},
 		{"dump", required_argument, nullptr, 'd'},
         {"out", required_argument, nullptr, 'o'},
-		{"help", no_argument, nullptr, 'h'},
+		{"hot", no_argument, nullptr, 'h'},
 		{"query", required_argument, nullptr, 'q'},
 		{"load", required_argument, nullptr, 'l'},
         {"uniqu", required_argument, nullptr, 'u'},
@@ -112,7 +111,7 @@ void ProcessArgs(int argc, char** argv)
 				bit_encoding=stoi(optarg);
 				break;
 			case 'h': // -h or --help
-				PrintHelp();
+				hot=true;
 				break;
 			case '?': // Unrecognized option
 				PrintHelp();
@@ -162,7 +161,7 @@ int main(int argc, char **argv)
         {
             case 8:
             {
-                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique);
+                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot);
                 ever.load(existing_index);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
@@ -177,7 +176,7 @@ int main(int argc, char **argv)
             }
             case 16:
             {
-                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique);
+                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot);
                 ever.load(existing_index);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
@@ -192,7 +191,7 @@ int main(int argc, char **argv)
             }
             case 32:
             {
-                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique);
+                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot);
                 ever.load(existing_index);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
@@ -217,7 +216,7 @@ int main(int argc, char **argv)
         {
             case 8:
             {
-                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique);
+                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot);
                 ever.insert_file_of_file(fof);
                 if(use_double_index){
                     ever.double_index();
@@ -232,7 +231,7 @@ int main(int argc, char **argv)
             }
             case 16:
             {
-                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique);
+                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot);
                 ever.insert_file_of_file(fof);
                 if(use_double_index){
                     ever.double_index();
@@ -247,7 +246,7 @@ int main(int argc, char **argv)
             }
             case 32:
             {
-                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique);
+                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot);
                 ever.insert_file_of_file(fof);
                 if(use_double_index){
                     ever.double_index();

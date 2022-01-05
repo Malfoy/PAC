@@ -42,7 +42,7 @@ void Best<T>::insert_key(const uint64_t key,uint level){
 
 template <class T>
 void Best<T>::add_leaf(){
-    leaf_filters.push_back(new Bloom(leaf_filters_size,number_hash_function));
+    leaf_filters.push_back(new Bloom(leaf_filters_size,number_hash_function,prefix+to_string(leaf_filters.size())));
 }
 
 
@@ -62,6 +62,21 @@ void Best<T>::optimize(uint i){
     if(i<leaf_filters.size()){
         leaf_filters[i]->optimize();
     }else{
+    }
+}
+
+
+template <class T>
+void Best<T>::dump(uint i){
+    leaf_filters[i]->dump_disk();
+    leaf_filters[i]->free_ram();
+}
+
+
+template <class T>
+void Best<T>::free_ram(){
+    for(uint i=0; i<leaf_filters.size(); ++i){
+        leaf_filters[i]->free_ram();
     }
 }
 
@@ -102,6 +117,11 @@ void Best<T>::update_kmer_RC(uint64_t& min, char nuc)const {
 template <class T>
 void Best<T>::insert_last_leaf_trunk(uint level,ExponentialBloom<T>* EB){
     Bloom* leon(leaf_filters[level]);
+    bool free_necessary = false;
+    if(not leon->available){
+        free_necessary=true;
+        leon->load_disk();
+    }
     auto value = leon->BV->get_first();
     uint64_t i=0;
     for(;i<leon->size and i<value;++i){
@@ -129,6 +149,9 @@ void Best<T>::insert_last_leaf_trunk(uint level,ExponentialBloom<T>* EB){
         if(EB->filter[i]!=0){
             EB->filter[i]++;
         }
+    }
+    if(free_necessary){
+        leon->free_ram();
     }
 }
 
@@ -184,7 +207,6 @@ vector<T> Best<T>::query_key(const uint64_t key){
     if(reverse_trunk!=NULL){
         max_level=reverse_trunk->check_key(key);
     }
-    //  cout<<"CHEY KEY OK"<<endl;
     for(int i=min_level;i<max_level;i++){
         // cout<<leaf_filters.size()<<" "<<i<<endl;
         if(leaf_filters[i]->check_key(key)){

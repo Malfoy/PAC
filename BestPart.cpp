@@ -296,13 +296,17 @@ vector<uint32_t> BestPart<T>::query_sequence(const string& reference){
     #pragma omp parallel for
     for(uint32_t i = 0; i < V.size();++i){
         // cout<<"query super kmer go"<<endl;
+        omp_set_lock(&mutex_array[V[i].second]);
         vector<T> colors=query_keys(V[i].first, V[i].second);
+        buckets[V[i].second]->free_ram();
+        omp_unset_lock(&mutex_array[V[i].second]);
         // cout<<"query super kmer OK"<<endl;
         for(uint32_t j = 0; j <colors.size();++j){
             #pragma omp atomic
                 result[colors[j]]++;
         }
     }
+    
     return result;
 }
 
@@ -315,7 +319,7 @@ void  BestPart<T>::insert_file(const string filename, uint level){
     zstr::ifstream in(filename);
     Bloom* unique_filter;
     if(filter){
-        unique_filter=new Bloom(leaf_filters_size,number_hash_function);
+        unique_filter=new Bloom(leaf_filters_size,number_hash_function,"osef");
     }
     // #pragma omp parallel
     {
@@ -337,6 +341,10 @@ void  BestPart<T>::insert_file(const string filename, uint level){
     // #pragma omp parallel for
     for(uint i=0;i<buckets.size();++i){
         buckets[i]->optimize(level);
+        if(not hot){
+            // cout<<"NOT HOT"<<endl;
+            buckets[i]->dump(level);
+        }
     }
 }
 
@@ -352,17 +360,23 @@ void BestPart<T>::insert_file_of_file(const string filename){
     {
         string ref;
         uint level;
+        bool go;
         while(not in.eof()) {
             #pragma omp critical (inputfile)
             {
                 getline(in,ref);
-                level=i;
-                i++;
-                add_leaf();
+                if(exists_test(ref)){
+                    level=i;
+                    i++;
+                    add_leaf();
+                    go=true;
+                }else{
+                    go=false;
+                }
             }
-            if(exists_test(ref)) {
+            if(go){
                 insert_file(ref,level);
-                if(level%100==0){
+                if(level%10==0){
                     cout<<level<<" files"<<endl;
                     // cout<<intToString(nb_insertions())<<endl;
                 }
@@ -373,8 +387,7 @@ void BestPart<T>::insert_file_of_file(const string filename){
     chrono::duration<double> elapsed_seconds = middle - start;
     cout <<  "Bloom construction time: " << elapsed_seconds.count() << "s\n";
     cout<<intToString(getMemorySelfMaxUsed()/1000)<<" MB total"<<endl;
-    cout<<intToString(getMemorySelfMaxUsed()/(1000*buckets[0]->leaf_filters.size()))<<" MB per file"<<endl;
-    
+    cout<<intToString(getMemorySelfMaxUsed()/(1000*i))<<" MB per file"<<endl;
     index();
     auto  end = chrono::system_clock::now();
     elapsed_seconds = end - middle;
@@ -382,7 +395,7 @@ void BestPart<T>::insert_file_of_file(const string filename){
     elapsed_seconds = end - start;
     cout <<  "Total Index time: " << elapsed_seconds.count() << "s\n";
     cout<<intToString(getMemorySelfMaxUsed()/1000)<<" MB total"<<endl;
-    cout<<intToString(getMemorySelfMaxUsed()/(1000*buckets[0]->leaf_filters.size()))<<" MB per file"<<endl;
+    cout<<intToString(getMemorySelfMaxUsed()/(1000*i))<<" MB per file"<<endl;
 }
 
 
@@ -448,7 +461,7 @@ void BestPart<T>::load(const string& existing_index){
     buckets.resize(bucket_number,NULL);
     //buckets
     for(size_t i = 0; i <buckets.size(); ++i){
-        buckets[i]=new Best<T>(trunk_size/bucket_number,leaf_filters_size/bucket_number,number_hash_function,K);
+        buckets[i]=new Best<T>(trunk_size/bucket_number,leaf_filters_size/bucket_number,number_hash_function,K,"Leon"+to_string(i));
         buckets[i]->load(&in);
     }
 }
