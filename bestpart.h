@@ -35,11 +35,13 @@ public:
     uint bucket_number;
     uint large_minimizer_number;
     uint leaf_number;
+    bool filter;
 
 
 
-    BestPart(const uint64_t Itrunk_size,const uint64_t Ileaf_filters_size,const uint Inumber_hash_function,const uint Ik){
+    BestPart(const uint64_t Itrunk_size,const uint64_t Ileaf_filters_size,const uint Inumber_hash_function,const uint Ik, bool Ifilter){
         K=Ik;
+        filter=Ifilter;
         small_minimizer_size=4;
         bucket_number=1<<(2*small_minimizer_size);
         large_minimizer_size=small_minimizer_size+3;
@@ -80,11 +82,11 @@ public:
     void insert_last_leaf_trunk();
     uint64_t regular_minimizer_pos(uint64_t seq, uint64_t& position);
     uint64_t canonize(uint64_t x, uint64_t n);
-    void insert_keys(const vector<uint64_t>& key,uint minimizer,uint level);
+    void insert_keys(const vector<uint64_t>& key,uint minimizer,uint level,Bloom* unique_filter);
     vector<T> query_keys(const vector<uint64_t>& key,uint minimizer);
     vector<pair<vector<uint64_t>,uint64_t> > get_super_kmers(const string& ref);
     //HIGH LEVEL FUNCTIONS
-    void insert_sequence(const string& reference,uint level) ;
+    void insert_sequence(const string& reference,uint level,Bloom* unique_filter) ;
     void insert_file(const string filename,uint level);
     void insert_file_of_file(const string filename);
     vector<uint> query_key(const uint64_t key);
@@ -97,6 +99,7 @@ public:
     void index();
     void double_index();
     void add_leaf();
+    uint64_t nb_insertions()const ;
 };
 
 template class BestPart<uint8_t>;

@@ -13,6 +13,7 @@
 
 
 
+
 using namespace std;
 
 
@@ -49,13 +50,20 @@ uint64_t unrevhash(uint64_t x) {
 
 
 template <class T>
-void BestPart<T>::insert_keys(const vector<uint64_t>& key,uint minimizer,uint level){
-    //TODO CAN BE IMPROVED ADDING LEVEL INFORMATION
-    // omp_set_lock(&mutex_array[minimizer]);
-    for(uint i=0;i<key.size(); ++i){
-        buckets[minimizer]->insert_key(key[i],level);
+void BestPart<T>::insert_keys(const vector<uint64_t>& key,uint minimizer,uint level,Bloom* unique_filter){
+    if(filter){
+        for(uint i=0;i<key.size(); ++i){
+            if(unique_filter->check_key(key[i])){
+                buckets[minimizer]->insert_key(key[i],level);
+            }else{
+                unique_filter->insert_key(key[i]);
+            }
+        }
+    }else{
+        for(uint i=0;i<key.size(); ++i){
+            buckets[minimizer]->insert_key(key[i],level);
+        }
     }
-    // omp_unset_lock(&mutex_array[minimizer]);
 }
 
 
@@ -226,11 +234,11 @@ vector<pair<vector<uint64_t>,uint64_t> > BestPart<T>::get_super_kmers(const stri
 
 
 template <class T>
-void BestPart<T>::insert_sequence(const string& reference,uint level){
+void BestPart<T>::insert_sequence(const string& reference,uint level, Bloom* unique_filter){
     auto V(get_super_kmers(reference));
     // #pragma omp parallel for
     for(uint32_t i = 0; i < V.size();++i){
-        insert_keys(V[i].first, V[i].second,level);
+        insert_keys(V[i].first, V[i].second,level,unique_filter);
     }
 }
 
@@ -303,7 +311,12 @@ vector<uint32_t> BestPart<T>::query_sequence(const string& reference){
 template <class T>
 void  BestPart<T>::insert_file(const string filename, uint level){
     char type=get_data_type(filename);
+    // cout<<"insert_file"<<filename<<endl;
     zstr::ifstream in(filename);
+    Bloom* unique_filter;
+    if(filter){
+        unique_filter=new Bloom(leaf_filters_size,number_hash_function);
+    }
     // #pragma omp parallel
     {
         string ref;
@@ -313,16 +326,18 @@ void  BestPart<T>::insert_file(const string filename, uint level){
                 Biogetline(&in,ref,type,K);
             }
             if(ref.size()>K) {
-                insert_sequence(ref,level);
+                insert_sequence(ref,level,unique_filter);
             }
         }
+    }
+    if(filter){
+        delete unique_filter;
     }
 
     // #pragma omp parallel for
     for(uint i=0;i<buckets.size();++i){
         buckets[i]->optimize(level);
     }
-    
 }
 
 
@@ -349,6 +364,7 @@ void BestPart<T>::insert_file_of_file(const string filename){
                 insert_file(ref,level);
                 if(level%100==0){
                     cout<<level<<" files"<<endl;
+                    // cout<<intToString(nb_insertions())<<endl;
                 }
             }
         }
@@ -356,6 +372,8 @@ void BestPart<T>::insert_file_of_file(const string filename){
     auto  middle = chrono::system_clock::now();
     chrono::duration<double> elapsed_seconds = middle - start;
     cout <<  "Bloom construction time: " << elapsed_seconds.count() << "s\n";
+    cout<<intToString(getMemorySelfMaxUsed()/1000)<<" MB total"<<endl;
+    cout<<intToString(getMemorySelfMaxUsed()/(1000*buckets[0]->leaf_filters.size()))<<" MB per file"<<endl;
     
     index();
     auto  end = chrono::system_clock::now();
@@ -363,6 +381,8 @@ void BestPart<T>::insert_file_of_file(const string filename){
     cout <<  "Exponential Bloom construction time: " << elapsed_seconds.count() << "s\n";
     elapsed_seconds = end - start;
     cout <<  "Total Index time: " << elapsed_seconds.count() << "s\n";
+    cout<<intToString(getMemorySelfMaxUsed()/1000)<<" MB total"<<endl;
+    cout<<intToString(getMemorySelfMaxUsed()/(1000*buckets[0]->leaf_filters.size()))<<" MB per file"<<endl;
 }
 
 
@@ -456,6 +476,7 @@ void BestPart<T>::double_index(){
 }
 
 
+
 template <class T>
 void BestPart<T>::add_leaf(){
     #pragma omp parallel for
@@ -463,3 +484,16 @@ void BestPart<T>::add_leaf(){
         buckets[i]->add_leaf();
     }
 }
+
+
+
+template <class T>
+uint64_t BestPart<T>::nb_insertions  ()const{
+    uint64_t result(0);
+    for(uint i=0;i<buckets.size();++i){
+        result+=buckets[i]->nb_insertions;
+    }
+    return result;
+}
+
+

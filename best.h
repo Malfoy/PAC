@@ -20,6 +20,8 @@ template <class T>
 class Best{
 public:
     vector<Bloom*> leaf_filters;
+    bool filter;
+    Bloom* protection;
     ExponentialBloom<T>* trunk;
     ExponentialBloom<T>* reverse_trunk;
     uint K;
@@ -49,6 +51,7 @@ public:
     ~Best(){
         if(trunk!=NULL){delete trunk;}
         if(reverse_trunk!=NULL){delete reverse_trunk;}
+        if(filter){delete protection;}
         for(uint i=0;i<leaf_filters.size();++i){
             delete leaf_filters[i];
         }

@@ -21,7 +21,7 @@ string fof(""), dump_index(""), query_file(""),existing_index(""),query_output("
 uint16_t nb_hash_func(1), bit_encoding(16);
 uint32_t kmer_size(31);
 uint64_t bf_size(100000000); 
-bool use_double_index(false);
+bool use_double_index(false),filter_unique(false);
 
 
 void PrintHelp()
@@ -44,7 +44,8 @@ void PrintHelp()
 			"-k                       :     k-mer size (default: " << kmer_size << ")\n"
 			"-b                       :     Bloom filter size (default " << intToString(bf_size) << ")\n"
 			"-n                       :     Bloom filter's number of hash functions (default: " << intToString( nb_hash_func) << ")\n"
-			"-e                       :     Bit encoding, possible values are 8 (max 256 files), 16 (max 16,384 files), 32 (Max 4,294,967,296 files) (default: " << bit_encoding << ")\n"
+			"-e                       :     Bit encoding, possible values are 8 (max 256 files), 16 (max 65,636 files), 32 (Max 4,294,967,296 files) (default: " << bit_encoding << ")\n"
+            "-u                       :     Filter unique Kmers \n"
             "-i                       :     Build double index for faster queries \n";
 
 	exit(1);
@@ -55,7 +56,7 @@ void PrintHelp()
 
 void ProcessArgs(int argc, char** argv)
 {
-	const char* const short_opts = "k:d:q:b:f:e:l:n:hi";
+	const char* const short_opts = "k:d:q:b:f:e:l:n:hiu";
 	const option long_opts[] = 
 	{
 		{"index", no_argument, nullptr, 'i'},
@@ -65,6 +66,7 @@ void ProcessArgs(int argc, char** argv)
 		{"help", no_argument, nullptr, 'h'},
 		{"query", required_argument, nullptr, 'q'},
 		{"load", required_argument, nullptr, 'l'},
+        {"uniqu", required_argument, nullptr, 'u'},
 		{nullptr, no_argument, nullptr, 0}
 	};
 	while (true)
@@ -78,6 +80,9 @@ void ProcessArgs(int argc, char** argv)
 		{
             case 'i':
 				use_double_index=true;
+				break;
+            case 'u':
+				filter_unique=true;
 				break;
 			case 'k':
 				kmer_size=stoi(optarg);
@@ -157,7 +162,7 @@ int main(int argc, char **argv)
         {
             case 8:
             {
-                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
+                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique);
                 ever.load(existing_index);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
@@ -172,7 +177,7 @@ int main(int argc, char **argv)
             }
             case 16:
             {
-                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
+                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique);
                 ever.load(existing_index);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
@@ -187,7 +192,7 @@ int main(int argc, char **argv)
             }
             case 32:
             {
-                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
+                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique);
                 ever.load(existing_index);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
@@ -212,7 +217,7 @@ int main(int argc, char **argv)
         {
             case 8:
             {
-                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
+                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique);
                 ever.insert_file_of_file(fof);
                 if(use_double_index){
                     ever.double_index();
@@ -227,7 +232,7 @@ int main(int argc, char **argv)
             }
             case 16:
             {
-                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
+                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique);
                 ever.insert_file_of_file(fof);
                 if(use_double_index){
                     ever.double_index();
@@ -242,7 +247,7 @@ int main(int argc, char **argv)
             }
             case 32:
             {
-                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size);
+                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique);
                 ever.insert_file_of_file(fof);
                 if(use_double_index){
                     ever.double_index();

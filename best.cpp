@@ -56,13 +56,13 @@ void Best<T>::optimize(){
 }
 
 
+
 template <class T>
 void Best<T>::optimize(uint i){
     if(i<leaf_filters.size()){
         leaf_filters[i]->optimize();
     }else{
     }
-    
 }
 
 

@@ -7,6 +7,8 @@
 #include "strict_fstream.hpp"
 #include "zstr.hpp"
 #include "utils.h"
+#include <sys/time.h>
+#include <sys/resource.h>
 
 
 
@@ -93,6 +95,14 @@ uint64_t hash64shift(uint64_t key) {
 	key = key ^ (key >> 28);
 	key = key + (key << 31);
 	return key;
+}
+
+
+uint64_t getMemorySelfMaxUsed (){
+	uint64_t result = 0;
+	struct rusage usage;
+	if (getrusage(RUSAGE_SELF, &usage)==0)  {  result = usage.ru_maxrss;  }
+	return result;
 }
 
 
