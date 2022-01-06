@@ -8,15 +8,17 @@
 #include <getopt.h>
 #include "best.h"
 #include "bestpart.h"
-
+#include <filesystem>
 
 
 using namespace std;
 using namespace chrono;
 
+using namespace filesystem;
 
 
-string fof(""), dump_index(""), query_file(""),existing_index(""),query_output("output.gz");
+
+string fof(""), w_dir("My_index"), query_file(""),existing_index(""),query_output("output.gz");
 uint16_t nb_hash_func(1), bit_encoding(16);
 uint32_t kmer_size(31);
 uint64_t bf_size(100000000); 
@@ -31,8 +33,8 @@ void PrintHelp()
 
 			"\n INDEX CONSTRUCTION\n"
             "--fof (-f)               :     Build index from file of files (FASTA/Q/GZ allowed in file of files)\n\n"
-            "--load (-l)              :     Load index from file \n\n"
-			"--dump (-d)              :     Write index in file\n"
+            "--load (-l)              :     Load index from folder \n\n"
+			"--dir (-d)               :     Write index in folder\n"
             "--hot (-h)               :     Keep all Bloom in RAM, (fast but expensive mode)\n"
 			
 			"\n INDEX QUERY\n"
@@ -55,12 +57,12 @@ void PrintHelp()
 
 void ProcessArgs(int argc, char** argv)
 {
-	const char* const short_opts = "k:d:q:b:f:e:l:n:hiu";
+	const char* const short_opts = "k:d:q:b:f:e:l:n:hiuo:";
 	const option long_opts[] = 
 	{
 		{"index", no_argument, nullptr, 'i'},
 		{"fof", required_argument, nullptr, 'f'},
-		{"dump", required_argument, nullptr, 'd'},
+		{"dir", required_argument, nullptr, 'd'},
         {"out", required_argument, nullptr, 'o'},
 		{"hot", no_argument, nullptr, 'h'},
 		{"query", required_argument, nullptr, 'q'},
@@ -87,7 +89,7 @@ void ProcessArgs(int argc, char** argv)
 				kmer_size=stoi(optarg);
 				break;
 			case 'd':
-				dump_index=optarg;
+				w_dir=absolute(optarg);
 				break;
 			case 'f':
 				fof=optarg;
@@ -161,7 +163,7 @@ int main(int argc, char **argv)
         {
             case 8:
             {
-                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot);
+                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir);
                 ever.load(existing_index);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
@@ -176,7 +178,7 @@ int main(int argc, char **argv)
             }
             case 16:
             {
-                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot);
+                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir);
                 ever.load(existing_index);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
@@ -191,7 +193,7 @@ int main(int argc, char **argv)
             }
             case 32:
             {
-                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot);
+                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir);
                 ever.load(existing_index);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
@@ -216,7 +218,7 @@ int main(int argc, char **argv)
         {
             case 8:
             {
-                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot);
+                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir);
                 ever.insert_file_of_file(fof);
                 if(use_double_index){
                     ever.double_index();
@@ -224,14 +226,12 @@ int main(int argc, char **argv)
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
                 }
-                if(dump_index!=""){
-                    ever.serialize(dump_index);
-                }
+                ever.serialize();
                 break;
             }
             case 16:
             {
-                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot);
+                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir);
                 ever.insert_file_of_file(fof);
                 if(use_double_index){
                     ever.double_index();
@@ -239,14 +239,12 @@ int main(int argc, char **argv)
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
                 }
-                if(dump_index!=""){
-                    ever.serialize(dump_index);
-                }
+                ever.serialize();
                 break;
             }
             case 32:
             {
-                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot);
+                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir);
                 ever.insert_file_of_file(fof);
                 if(use_double_index){
                     ever.double_index();
@@ -254,9 +252,7 @@ int main(int argc, char **argv)
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
                 }
-                if(dump_index!=""){
-                    ever.serialize(dump_index);
-                }
+                ever.serialize();
                 break;
             }
         }

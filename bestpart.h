@@ -29,22 +29,25 @@ public:
     uint64_t offsetUpdateminimizer;
     uint64_t leaf_filters_size;
     uint64_t trunk_size;
+    uint64_t leaf_number;
     uint number_hash_function;
     uint small_minimizer_size;
     uint large_minimizer_size;
     uint bucket_number;
     uint large_minimizer_number;
-    uint leaf_number;
     bool filter;
     bool hot;
+    string w_dir;
 
 
 
-    BestPart(const uint64_t Itrunk_size,const uint64_t Ileaf_filters_size,const uint Inumber_hash_function,const uint Ik, bool Ifilter,bool Ihot){
+    BestPart(const uint64_t Itrunk_size,const uint64_t Ileaf_filters_size,const uint Inumber_hash_function,const uint Ik, bool Ifilter,bool Ihot,const string Iwdir){
         K=Ik;
+        w_dir=Iwdir;
         hot=Ihot;
         filter=Ifilter;
-        small_minimizer_size=3;
+        leaf_number=0;
+        small_minimizer_size=1  ;
         bucket_number=1<<(2*small_minimizer_size);
         large_minimizer_size=small_minimizer_size+3;
         large_minimizer_number=1<<(2*large_minimizer_size);
@@ -96,7 +99,7 @@ public:
     void get_stats()const;
     void optimize();
     void query_file(const string& reference,const string& output);
-    void serialize(const string& filename)const;
+    void serialize()const;
     void load(const string& existing_index);
     void index();
     void double_index();

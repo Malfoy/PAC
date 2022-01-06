@@ -8,10 +8,12 @@
 #include <vector>
 #include <math.h>
 #include <cmath> 
+#include <filesystem>
 
 
 
 using namespace std;
+using namespace filesystem;
 
 
 template <class T>
@@ -186,7 +188,7 @@ void Best<T>::insert_file_of_file(const string filename){
     while(not in.eof()) {
         getline(in,ref);
         if(exists_test(ref)) {
-            cout<<"go insert_file"<<endl;
+            // cout<<"go insert_file"<<endl;
             insert_file(ref);
             change_level();
         }
@@ -213,51 +215,62 @@ vector<T> Best<T>::query_key(const uint64_t key){
             result.push_back(i);
         }
     }
-    //  cout<<"QUERY KEY END"<<endl;
+    // cout<<"QUERY KEY END"<<endl;
     return result;
 }
 
 
 
 template <class T>
-void Best<T>::serialize(zstr::ostream* out)const{
+void Best<T>::serialize(zstr::ostream* out,bool hot)const{
     void* point = &(trunk->filter[0]);
-    // cout<<trunk_size<<endl;
     out->write((char*)point, sizeof(T)*trunk_size);
-    bm::serializer<bm::bvector<> > bvs;
-	bvs.byte_order_serialization(false);
-	bvs.gap_length_serialization(false);
-	bm::serializer<bm::bvector<> >::buffer sbuf;
-    for(uint i = 0; i < leaf_filters.size(); ++i){
-        unsigned char* buf = 0;
-		bvs.serialize(*(leaf_filters[i]->BV), sbuf);
-		buf         = sbuf.data();
-		uint64_t sz = sbuf.size();
-        // cout<<"size buff"<<sz<<endl;
-		auto point2 = &buf[0];
-		out->write(reinterpret_cast<const char*>(&sz), sizeof(sz));
-		out->write((char*)point2, sz);
+    // cout << "Current path is " <<current_path() << '\n'; // (1)
+    if(hot){
+        for(uint i = 0; i < leaf_filters.size(); ++i){
+            leaf_filters[i]->dump_disk();
+        }
     }
+    // bm::serializer<bm::bvector<> > bvs;
+	// bvs.byte_order_serialization(false);
+	// bvs.gap_length_serialization(false);
+	// bm::serializer<bm::bvector<> >::buffer sbuf;
+    // for(uint i = 0; i < leaf_filters.size(); ++i){
+    //     unsigned char* buf = 0;
+	// 	bvs.serialize(*(leaf_filters[i]->BV), sbuf);
+	// 	buf         = sbuf.data();
+	// 	uint64_t sz = sbuf.size();
+    //     // cout<<"size buff"<<sz<<endl;
+	// 	auto point2 = &buf[0];
+	// 	out->write(reinterpret_cast<const char*>(&sz), sizeof(sz));
+	// 	out->write((char*)point2, sz);
+    // }
 }
 
 
 template <class T>
-void Best<T>::load(zstr::ifstream* out){
+void Best<T>::load(zstr::ifstream* out,bool hot, uint64_t leaf_number ){
+    trunk=new ExponentialBloom<T>(trunk_size,number_hash_function);
     void* point = &(trunk->filter[0]);
     // cout<<trunk_size<<endl;
     out->read((char*)point, sizeof(T)*trunk_size);
     // cout<<"read trunk"<<endl;
-    for(uint i = 0; i < leaf_filters.size(); ++i){
-        // cout<<"go leaf"<<endl;
-        uint64_t sz;
-        out->read(reinterpret_cast<char*>(&sz), sizeof(sz));
-        // cout<<sz<<endl;
-        uint8_t* buff = new uint8_t[sz];
-        out->read((char*)buff, sz);
-        //  cout<<"read ok"<<endl;
-        bm::deserialize(*(leaf_filters[i]->BV), buff);
-        delete[] buff;
+   
+    for(uint i = 0; i < leaf_number; ++i){
+        leaf_filters.push_back(new Bloom(leaf_filters_size,number_hash_function,prefix+to_string(leaf_filters.size())));
+        if(hot){
+            leaf_filters[i]->load_disk();
+        }
     }
+        // // cout<<"go leaf"<<endl;
+        // uint64_t sz;
+        // out->read(reinterpret_cast<char*>(&sz), sizeof(sz));
+        // // cout<<sz<<endl;
+        // uint8_t* buff = new uint8_t[sz];
+        // out->read((char*)buff, sz);
+        // //  cout<<"read ok"<<endl;
+        // bm::deserialize(*(leaf_filters[i]->BV), buff);
+        // delete[] buff;
 }
 
 

@@ -10,11 +10,13 @@
 #include <string>
 #include <chrono>
 #include <ctime>
+#include <filesystem>
 
 
 
 
 using namespace std;
+using namespace filesystem;
 
 
 
@@ -251,6 +253,8 @@ void BestPart<T>::query_file(const string& filename, const string& output){
     zstr::ofstream out(output,ios::binary);
     char type=get_data_type(filename);
     zstr::ifstream in(filename);
+    path old(current_path());
+    current_path(w_dir);
     #pragma omp parallel
     {
         string ref,header;
@@ -279,6 +283,7 @@ void BestPart<T>::query_file(const string& filename, const string& output){
     auto end = std::chrono::system_clock::now();
     chrono::duration<double> elapsed_seconds = end - start;
     cout <<  "Query time: " << elapsed_seconds.count() << "s\n";
+    current_path(old);
 }
 
 
@@ -293,7 +298,7 @@ vector<uint32_t> BestPart<T>::query_sequence(const string& reference){
     // cout<<"Query sequence go"<<endl;
     vector<uint32_t> result(leaf_number,0);
     auto V(get_super_kmers(reference));
-    #pragma omp parallel for
+    // #pragma omp parallel for
     for(uint32_t i = 0; i < V.size();++i){
         // cout<<"query super kmer go"<<endl;
         omp_set_lock(&mutex_array[V[i].second]);
@@ -302,7 +307,7 @@ vector<uint32_t> BestPart<T>::query_sequence(const string& reference){
         omp_unset_lock(&mutex_array[V[i].second]);
         // cout<<"query super kmer OK"<<endl;
         for(uint32_t j = 0; j <colors.size();++j){
-            #pragma omp atomic
+            // #pragma omp atomic
                 result[colors[j]]++;
         }
     }
@@ -352,10 +357,19 @@ void  BestPart<T>::insert_file(const string filename, uint level){
 
 template <class T>
 void BestPart<T>::insert_file_of_file(const string filename){
+    path old(current_path());
+    path vodka(absolute(filename));
+    zstr::ifstream in(vodka);
     cout<<"Insert file of file "<<filename<<endl;
-    auto  start = chrono::system_clock::now();
-    uint i = 0;
-    zstr::ifstream in(filename);
+    path initial_path=current_path();
+    path p {w_dir};
+    if(exists(p)){
+        
+    }else{
+        create_directory(p);
+    }
+    current_path(p);
+    auto  start = chrono::system_clock::now();;
     #pragma omp parallel
     {
         string ref;
@@ -365,9 +379,11 @@ void BestPart<T>::insert_file_of_file(const string filename){
             #pragma omp critical (inputfile)
             {
                 getline(in,ref);
+                // 
                 if(exists_test(ref)){
-                    level=i;
-                    i++;
+                    // cout<<ref<<" "<<level<<endl;
+                    level=leaf_number;
+                    leaf_number++;
                     add_leaf();
                     go=true;
                 }else{
@@ -376,7 +392,7 @@ void BestPart<T>::insert_file_of_file(const string filename){
             }
             if(go){
                 insert_file(ref,level);
-                if(level%10==0){
+                if(level%100==0){
                     cout<<level<<" files"<<endl;
                     // cout<<intToString(nb_insertions())<<endl;
                 }
@@ -387,7 +403,7 @@ void BestPart<T>::insert_file_of_file(const string filename){
     chrono::duration<double> elapsed_seconds = middle - start;
     cout <<  "Bloom construction time: " << elapsed_seconds.count() << "s\n";
     cout<<intToString(getMemorySelfMaxUsed()/1000)<<" MB total"<<endl;
-    cout<<intToString(getMemorySelfMaxUsed()/(1000*i))<<" MB per file"<<endl;
+    cout<<intToString(getMemorySelfMaxUsed()/(1000*leaf_number))<<" MB per file"<<endl;
     index();
     auto  end = chrono::system_clock::now();
     elapsed_seconds = end - middle;
@@ -395,7 +411,8 @@ void BestPart<T>::insert_file_of_file(const string filename){
     elapsed_seconds = end - start;
     cout <<  "Total Index time: " << elapsed_seconds.count() << "s\n";
     cout<<intToString(getMemorySelfMaxUsed()/1000)<<" MB total"<<endl;
-    cout<<intToString(getMemorySelfMaxUsed()/(1000*i))<<" MB per file"<<endl;
+    cout<<intToString(getMemorySelfMaxUsed()/(1000*leaf_number))<<" MB per file"<<endl;
+    current_path(old);
 }
 
 
@@ -414,8 +431,17 @@ void BestPart<T>::get_stats()const{
 
 
 template <class T>
-void BestPart<T>::serialize(const string& filename)const{
-    cout<<"Dump the index in "<<filename<<endl;
+void BestPart<T>::serialize()const{
+    cout<<"Dump the index in "<<w_dir<<endl;
+    path initial_path=current_path();
+    path p {w_dir};
+    if(exists(p)){
+        
+    }else{
+        create_directory(p);
+    }
+    current_path(p);
+    string filename("MainIndex");
     filebuf fb;
     fb.open(filename, ios::out | ios::binary | ios::trunc);
 	zstr::ostream out(&fb);
@@ -426,12 +452,14 @@ void BestPart<T>::serialize(const string& filename)const{
     out.write(reinterpret_cast<const char*>(&number_hash_function), sizeof(number_hash_function));
     out.write(reinterpret_cast<const char*>(&small_minimizer_size), sizeof(small_minimizer_size));
     out.write(reinterpret_cast<const char*>(&large_minimizer_size), sizeof(large_minimizer_size));
+    out.write(reinterpret_cast<const char*>(&leaf_number), sizeof(leaf_number));
     //buckets
     for(size_t i = 0; i <buckets.size(); ++i){
-        buckets[i]->serialize(&out);
+        buckets[i]->serialize(&out,hot);
     }
     out<<flush;
     fb.close();
+    current_path(initial_path);
 }
 
 
@@ -439,7 +467,17 @@ void BestPart<T>::serialize(const string& filename)const{
 template <class T>
 void BestPart<T>::load(const string& existing_index){
     cout<<"Loading "<<existing_index<<"..."<<endl;
-    zstr::ifstream in(existing_index);
+    path initial_path=current_path();
+    path p {existing_index};
+    if(exists(p)){
+        
+    }else{
+       cout<<"I cannot found you index sorry ..."<<endl;
+       return;
+    }
+    current_path(p);
+    string filename("MainIndex");
+    zstr::ifstream in(filename);
      // VARIOUS INTEGERS
     in.read(reinterpret_cast< char*>(&K), sizeof(K));
     in.read(reinterpret_cast< char*>(&leaf_filters_size), sizeof(leaf_filters_size));
@@ -447,6 +485,7 @@ void BestPart<T>::load(const string& existing_index){
     in.read(reinterpret_cast< char*>(&number_hash_function), sizeof(number_hash_function));
     in.read(reinterpret_cast< char*>(&small_minimizer_size), sizeof(small_minimizer_size));
     in.read(reinterpret_cast< char*>(&large_minimizer_size), sizeof(large_minimizer_size));
+    in.read(reinterpret_cast< char*>(&leaf_number), sizeof(leaf_number));
     bucket_number=1<<(2*small_minimizer_size);
     large_minimizer_number=1<<(2*large_minimizer_size);
     mutex_array=new omp_lock_t[bucket_number];
@@ -457,13 +496,15 @@ void BestPart<T>::load(const string& existing_index){
     for(uint32_t i=0;i<bucket_number;++i){
         omp_init_lock(&mutex_array[i]);
     }
-
+    // cout<<"main parameter ok"<<endl;
+    // cout<<K<<leaf_filters_size<<trunk_size<<endl;
     buckets.resize(bucket_number,NULL);
     //buckets
     for(size_t i = 0; i <buckets.size(); ++i){
         buckets[i]=new Best<T>(trunk_size/bucket_number,leaf_filters_size/bucket_number,number_hash_function,K,"Leon"+to_string(i));
-        buckets[i]->load(&in);
+        buckets[i]->load(&in,hot,leaf_number);
     }
+    current_path(initial_path);
 }
 
 

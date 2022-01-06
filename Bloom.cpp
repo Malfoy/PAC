@@ -3,6 +3,12 @@
 #include "BitMagic/src/bm.h"
 #include "BitMagic/src/bmserial.h"
 #include "BitMagic/src/bmundef.h"
+#include <filesystem>
+
+using namespace std;
+
+using namespace filesystem;
+
 
 
 
@@ -34,6 +40,7 @@ bool Bloom::check_key(uint64_t key){
 
 void Bloom::dump_disk(){
     ofstream out(filename,iostream::trunc);
+    // cout<<absolute(filename)<<endl;
     bm::serializer<bm::bvector<> > bvs;
 	bvs.byte_order_serialization(false);
 	bvs.gap_length_serialization(false);

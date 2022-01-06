@@ -22,7 +22,6 @@ public:
     vector<Bloom*> leaf_filters;
     string prefix;
     bool filter;
-    Bloom* protection;
     ExponentialBloom<T>* trunk;
     ExponentialBloom<T>* reverse_trunk;
     uint K;
@@ -52,7 +51,6 @@ public:
     ~Best(){
         if(trunk!=NULL){delete trunk;}
         if(reverse_trunk!=NULL){delete reverse_trunk;}
-        if(filter){delete protection;}
         for(uint i=0;i<leaf_filters.size();++i){
             delete leaf_filters[i];
         }
@@ -67,7 +65,7 @@ public:
     void update_kmer(uint64_t& min, char nuc)const;
     void update_kmer_RC(uint64_t& min, char nuc)const;
     void insert_last_leaf_trunk(uint level,ExponentialBloom<T>* EB);
-    void load(zstr::ifstream* out);
+    void load(zstr::ifstream* out,bool hot,uint64_t leaf_number);
 
     //HIGH LEVEL FUNCTIONS
     void insert_sequence(const string& reference) ;
@@ -78,7 +76,7 @@ public:
     void construct_reverse_trunk();
     void construct_trunk();
     void get_stats()const;
-    void serialize(zstr::ostream* out)const;
+    void serialize(zstr::ostream* out,bool hot)const;
     void optimize();
     void optimize(uint i);
     void dump(uint i);
