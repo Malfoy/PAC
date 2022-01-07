@@ -79,7 +79,7 @@ public:
     void serialize(zstr::ostream* out,bool hot)const;
     void optimize();
     void optimize(uint i);
-    void dump(uint i);
+    void dump(uint i,bm::serializer<bm::bvector<> >& bvs);
     void add_leaf();
     void free_ram();
 };

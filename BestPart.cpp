@@ -342,13 +342,16 @@ void  BestPart<T>::insert_file(const string filename, uint level){
     if(filter){
         delete unique_filter;
     }
+    bm::serializer<bm::bvector<> > bvs;
+	bvs.byte_order_serialization(false);
+	bvs.gap_length_serialization(false);
 
     // #pragma omp parallel for
     for(uint i=0;i<buckets.size();++i){
         buckets[i]->optimize(level);
         if(not hot){
             // cout<<"NOT HOT"<<endl;
-            buckets[i]->dump(level);
+            buckets[i]->dump(level,bvs);
         }
     }
 }
@@ -403,7 +406,7 @@ void BestPart<T>::insert_file_of_file(const string filename){
     chrono::duration<double> elapsed_seconds = middle - start;
     cout <<  "Bloom construction time: " << elapsed_seconds.count() << "s\n";
     cout<<intToString(getMemorySelfMaxUsed()/1000)<<" MB total"<<endl;
-    cout<<intToString(getMemorySelfMaxUsed()/(1000*leaf_number))<<" MB per file"<<endl;
+    cout<<intToString(getMemorySelfMaxUsed()/(1000*leaf_number))<<" MB per file ("<<leaf_number<<" files)"<<endl;
     index();
     auto  end = chrono::system_clock::now();
     elapsed_seconds = end - middle;
@@ -515,7 +518,6 @@ void BestPart<T>::index(){
     for(uint i=0;i<buckets.size();++i){
         buckets[i]->construct_trunk();
     }
-    leaf_number=buckets[0]->leaf_filters.size();
 }
 
 

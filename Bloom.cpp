@@ -38,12 +38,9 @@ bool Bloom::check_key(uint64_t key){
 }
 
 
-void Bloom::dump_disk(){
+void Bloom::dump_disk(bm::serializer<bm::bvector<> >& bvs){
     ofstream out(filename,iostream::trunc);
-    // cout<<absolute(filename)<<endl;
-    bm::serializer<bm::bvector<> > bvs;
-	bvs.byte_order_serialization(false);
-	bvs.gap_length_serialization(false);
+
 	bm::serializer<bm::bvector<> >::buffer sbuf;
     unsigned char* buf = 0;
     bvs.serialize(*(BV), sbuf);

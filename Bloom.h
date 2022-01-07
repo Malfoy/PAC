@@ -6,6 +6,8 @@
 #include <cmath> 
 #include "omp.h"
 #include "BitMagic/src/bm.h"
+#include "BitMagic/src/bmserial.h"
+#include "BitMagic/src/bmundef.h"
 
 
 
@@ -31,7 +33,7 @@ public:
     }
     bool check_key(uint64_t key);
     uint64_t get_cardinality()const;
-    void dump_disk();
+    void dump_disk(bm::serializer<bm::bvector<> >& bvs);
     void load_disk();
     void free_ram();
     

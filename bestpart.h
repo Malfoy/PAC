@@ -47,7 +47,7 @@ public:
         hot=Ihot;
         filter=Ifilter;
         leaf_number=0;
-        small_minimizer_size=1  ;
+        small_minimizer_size=2;
         bucket_number=1<<(2*small_minimizer_size);
         large_minimizer_size=small_minimizer_size+3;
         large_minimizer_number=1<<(2*large_minimizer_size);

@@ -69,8 +69,8 @@ void Best<T>::optimize(uint i){
 
 
 template <class T>
-void Best<T>::dump(uint i){
-    leaf_filters[i]->dump_disk();
+void Best<T>::dump(uint i,bm::serializer<bm::bvector<> >& bvs){
+    leaf_filters[i]->dump_disk(bvs);
     leaf_filters[i]->free_ram();
 }
 
@@ -227,8 +227,11 @@ void Best<T>::serialize(zstr::ostream* out,bool hot)const{
     out->write((char*)point, sizeof(T)*trunk_size);
     // cout << "Current path is " <<current_path() << '\n'; // (1)
     if(hot){
+    bm::serializer<bm::bvector<> > bvs;
+	bvs.byte_order_serialization(false);
+	bvs.gap_length_serialization(false);
         for(uint i = 0; i < leaf_filters.size(); ++i){
-            leaf_filters[i]->dump_disk();
+            leaf_filters[i]->dump_disk(bvs);
         }
     }
     // bm::serializer<bm::bvector<> > bvs;
