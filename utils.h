@@ -20,6 +20,8 @@ using namespace std;
 uint64_t nuc2int(char c);
 
 string intToString(uint64_t n);
+uint64_t asm_log2(const uint64_t x);
+uint64_t approx_power2(uint64_t n);
 
 
 uint64_t nuc2intrc(char c) ;

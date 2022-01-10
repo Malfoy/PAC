@@ -21,7 +21,7 @@ using namespace filesystem;
 string fof(""), w_dir("My_index"), query_file(""),existing_index(""),query_output("output.gz");
 uint16_t nb_hash_func(1), bit_encoding(16);
 uint32_t kmer_size(31);
-uint64_t bf_size(100000000); 
+uint64_t bf_size(134217728); 
 bool use_double_index(false),filter_unique(false),hot(false);
 
 
@@ -104,7 +104,7 @@ void ProcessArgs(int argc, char** argv)
 				existing_index=optarg;
 				break;
 			case 'b':
-				bf_size=stoull(optarg);
+				bf_size=(stoull(optarg));
 				break;
 			case 'n':
 				nb_hash_func=stoi(optarg);
@@ -146,7 +146,7 @@ int main(int argc, char **argv)
 		PrintHelp();
 	}
 
-	cout << "************** SUPER TOOL GO ***************\n\n";
+	cout << "************** PAC  ***************\n\n";
 
     // check bit encoding + build index
     if (!(bit_encoding == 8 or bit_encoding == 16 or bit_encoding == 32))
@@ -155,6 +155,7 @@ int main(int argc, char **argv)
         PrintHelp();
         return -1;
     }
+    bf_size=approx_power2(bf_size);
 
     //WE BUILD THE INDEX
     if(existing_index != ""){

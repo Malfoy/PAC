@@ -14,7 +14,7 @@ using namespace filesystem;
 
 void Bloom::insert_key(uint64_t key){
     for(uint64_t i=0; i<number_hash_functions;++i){
-        uint64_t h=hash_family(key,i)%size;//TODO SIZE POWER OF TWO
+        uint64_t h=hash_family(key,i)&size;//TODO SIZE POWER OF TWO
         if((*BV)[h]==false){
             (*BV)[h]=true;
         }
@@ -28,7 +28,7 @@ bool Bloom::check_key(uint64_t key){
         load_disk();
     }
     for(uint64_t i=0; i<number_hash_functions;++i){
-        uint64_t h=hash_family(key,i)%size;//TODO SIZE POWER OF TWO
+        uint64_t h=hash_family(key,i)&size;//TODO SIZE POWER OF TWO
         if((*BV)[h]==false){
             return false;
         }

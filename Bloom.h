@@ -5,6 +5,7 @@
 #include <math.h>
 #include <cmath> 
 #include "omp.h"
+#include "utils.h"
 #include "BitMagic/src/bm.h"
 #include "BitMagic/src/bmserial.h"
 #include "BitMagic/src/bmundef.h"
@@ -38,10 +39,11 @@ public:
     
     Bloom(const uint64_t Isize, uint Inumber_hash_functions,const string& Ifilename){
         filename=Ifilename;
-        size=Isize;
+        size=Isize-1;
         number_hash_functions=Inumber_hash_functions;
-        BV=new bm::bvector<>(size,bm::BM_GAP);
+        BV=new bm::bvector<>(Isize,bm::BM_GAP);
         available=true;
+        
     }
 
     ~Bloom(){
