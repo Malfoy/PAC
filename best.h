@@ -65,6 +65,7 @@ public:
     void update_kmer(uint64_t& min, char nuc)const;
     void update_kmer_RC(uint64_t& min, char nuc)const;
     void insert_last_leaf_trunk(uint level,ExponentialBloom<T>* EB);
+    void insert_leaf_trunk(uint indice,uint level,ExponentialBloom<T>* EB);
     void load(zstr::ifstream* out,bool hot,uint64_t leaf_number,bool double_index);
 
     //HIGH LEVEL FUNCTIONS

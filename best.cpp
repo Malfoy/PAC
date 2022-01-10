@@ -20,8 +20,11 @@ using namespace filesystem;
 template <class T>
 void Best<T>::construct_reverse_trunk(){
     reverse_trunk=new ExponentialBloom<T>(trunk_size,number_hash_function);
+    uint64_t lfs(leaf_filters.size()-1);
     for(int i = leaf_filters.size()-1; i>=0; i--){
-        insert_last_leaf_trunk(i,reverse_trunk);
+        insert_leaf_trunk(i,lfs-i,trunk);//TODO TO CHECK
+        //~ insert_last_leaf_trunk(i,reverse_trunk);
+        
     }
 }
 
@@ -30,8 +33,10 @@ void Best<T>::construct_reverse_trunk(){
 template <class T>
 void Best<T>::construct_trunk(){
     trunk=new ExponentialBloom<T>(trunk_size,number_hash_function);
+    uint64_t lfs(leaf_filters.size()-1);
     for(uint i = 0; i<leaf_filters.size(); i++){
-        insert_last_leaf_trunk(i,trunk);
+        //~ insert_last_leaf_trunk(i,trunk);
+        insert_leaf_trunk(i,lfs-i,trunk);//TODO TO CHECK
     }
 }
 
@@ -165,6 +170,31 @@ void Best<T>::insert_last_leaf_trunk(uint level,ExponentialBloom<T>* EB){
         if(EB->filter[i]!=0){
             EB->filter[i]++;
         }
+    }
+    if(free_necessary){
+        leon->free_ram();
+    }
+}
+
+
+
+template <class T>
+void Best<T>::insert_leaf_trunk(uint level,uint indice,ExponentialBloom<T>* EB){
+    Bloom* leon(leaf_filters[level]);
+    bool free_necessary = false;
+    if(not leon->available){
+        free_necessary=true;
+        leon->load_disk();
+    }
+    bm::bvector<>::enumerator en = leon->BV->first();
+    bm::bvector<>::enumerator en_end = leon->BV->end();
+    while (en < en_end)
+    {
+        if(EB->filter[*en]==0){
+            EB->filter[*en]=indice;
+        }
+        ++en;  
+        number_bit_set++;
     }
     if(free_necessary){
         leon->free_ram();
