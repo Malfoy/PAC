@@ -59,6 +59,7 @@ uint64_t str2numstrand(const string& str) {
 }
 
 
+
 //pretty printing
 string intToString(uint64_t n) {
   if (n < 1000) {
@@ -96,6 +97,7 @@ uint64_t hash64shift(uint64_t key) {
 	key = key + (key << 31);
 	return key;
 }
+
 
 
 uint64_t getMemorySelfMaxUsed (){
@@ -137,6 +139,7 @@ void Biogetline(zstr::ifstream* in,string& result,char type,uint K) {
     result.clear();
   }
 }
+
 
 
 void Biogetline(zstr::ifstream* in,string& result,char type,uint K,string& header) {
@@ -183,8 +186,6 @@ bool exists_test (const std::string& name) {
     struct stat buffer;
     return (stat (name.c_str(), &buffer) == 0);
 }
-
-
 
 
 

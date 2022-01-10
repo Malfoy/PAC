@@ -75,9 +75,7 @@ vector<T> BestPart<T>::query_keys(const vector<uint64_t>& key,uint minimizer){
     vector<T> result;
     vector<T> colors;
     for(uint i=0;i<key.size(); ++i){
-        // cout<<"go query key"<<key[i]<<endl;
         colors=buckets[minimizer]->query_key(key[i]);
-        // cout<<"OK query key"<<key[i]<<endl;
         result.insert( result.end(), colors.begin(), colors.end() );
         colors.clear();
     }
@@ -295,20 +293,16 @@ void BestPart<T>::query_file(const string& filename, const string& output){
 
 template <class T>
 vector<uint32_t> BestPart<T>::query_sequence(const string& reference){
-    // cout<<"Query sequence go"<<endl;
     vector<uint32_t> result(leaf_number,0);
     auto V(get_super_kmers(reference));
-    // #pragma omp parallel for
+    vector<T> colors;
     for(uint32_t i = 0; i < V.size();++i){
-        // cout<<"query super kmer go"<<endl;
         omp_set_lock(&mutex_array[V[i].second]);
-        vector<T> colors=query_keys(V[i].first, V[i].second);
+        colors=query_keys(V[i].first, V[i].second);
         buckets[V[i].second]->free_ram();
         omp_unset_lock(&mutex_array[V[i].second]);
-        // cout<<"query super kmer OK"<<endl;
         for(uint32_t j = 0; j <colors.size();++j){
-            // #pragma omp atomic
-                result[colors[j]]++;
+            result[colors[j]]++;
         }
     }
     
@@ -318,19 +312,16 @@ vector<uint32_t> BestPart<T>::query_sequence(const string& reference){
 
 
 template <class T>
-void  BestPart<T>::insert_file(const string filename, uint level){
+void  BestPart<T>::insert_file(const string& filename, uint level){
     char type=get_data_type(filename);
-    // cout<<"insert_file"<<filename<<endl;
     zstr::ifstream in(filename);
     Bloom* unique_filter;
     if(filter){
         unique_filter=new Bloom(leaf_filters_size,number_hash_function,"osef");
     }
-    // #pragma omp parallel
     {
         string ref;
         while(not in.eof()) {
-            // #pragma omp critical (inputfile)
             {
                 Biogetline(&in,ref,type,K);
             }
@@ -346,11 +337,9 @@ void  BestPart<T>::insert_file(const string filename, uint level){
 	bvs.byte_order_serialization(false);
 	bvs.gap_length_serialization(false);
 
-    // #pragma omp parallel for
     for(uint i=0;i<buckets.size();++i){
         buckets[i]->optimize(level);
         if(not hot){
-            // cout<<"NOT HOT"<<endl;
             buckets[i]->dump(level,bvs);
         }
     }
@@ -359,7 +348,7 @@ void  BestPart<T>::insert_file(const string filename, uint level){
 
 
 template <class T>
-void BestPart<T>::insert_file_of_file(const string filename){
+void BestPart<T>::insert_file_of_file(const string& filename){
     path old(current_path());
     path vodka(absolute(filename));
     zstr::ifstream in(vodka);
@@ -382,11 +371,8 @@ void BestPart<T>::insert_file_of_file(const string filename){
             #pragma omp critical (inputfile)
             {
                 getline(in,ref);
-                // 
                 if(exists_test(ref)){
-                    // cout<<ref<<" "<<level<<endl;
                     level=leaf_number;
-                    leaf_number++;
                     add_leaf();
                     go=true;
                 }else{
@@ -397,7 +383,6 @@ void BestPart<T>::insert_file_of_file(const string filename){
                 insert_file(ref,level);
                 if(level%100==0){
                     cout<<level<<" files"<<endl;
-                    // cout<<intToString(nb_insertions())<<endl;
                 }
             }
         }
@@ -408,6 +393,10 @@ void BestPart<T>::insert_file_of_file(const string filename){
     cout<<intToString(getMemorySelfMaxUsed()/1000)<<" MB total"<<endl;
     cout<<intToString(getMemorySelfMaxUsed()/(1000*leaf_number))<<" MB per file ("<<leaf_number<<" files)"<<endl;
     index();
+    if(use_double_index){
+        double_index();
+    }
+    nb_bit_set();
     auto  end = chrono::system_clock::now();
     elapsed_seconds = end - middle;
     cout <<  "Exponential Bloom construction time: " << elapsed_seconds.count() << "s\n";
@@ -420,16 +409,6 @@ void BestPart<T>::insert_file_of_file(const string filename){
 
 
 
-template <class T>
-void BestPart<T>::get_stats()const{
-    uint64_t total = 0;
-    for(uint i=0; i<bucket_number;++i){
-        total += buckets[i]->nb_insertions;
-        cout<<intToString(buckets[i]->nb_insertions)<<' ';
-    }
-    cout<<endl;
-    cout<<intToString(total)<<endl;
-}
 
 
 
@@ -456,6 +435,7 @@ void BestPart<T>::serialize()const{
     out.write(reinterpret_cast<const char*>(&small_minimizer_size), sizeof(small_minimizer_size));
     out.write(reinterpret_cast<const char*>(&large_minimizer_size), sizeof(large_minimizer_size));
     out.write(reinterpret_cast<const char*>(&leaf_number), sizeof(leaf_number));
+    out.write(reinterpret_cast<const char*>(&use_double_index), sizeof(use_double_index));
     //buckets
     for(size_t i = 0; i <buckets.size(); ++i){
         buckets[i]->serialize(&out,hot);
@@ -489,6 +469,7 @@ void BestPart<T>::load(const string& existing_index){
     in.read(reinterpret_cast< char*>(&small_minimizer_size), sizeof(small_minimizer_size));
     in.read(reinterpret_cast< char*>(&large_minimizer_size), sizeof(large_minimizer_size));
     in.read(reinterpret_cast< char*>(&leaf_number), sizeof(leaf_number));
+    in.read(reinterpret_cast< char*>(&use_double_index), sizeof(use_double_index));
     bucket_number=1<<(2*small_minimizer_size);
     large_minimizer_number=1<<(2*large_minimizer_size);
     mutex_array=new omp_lock_t[bucket_number];
@@ -499,13 +480,11 @@ void BestPart<T>::load(const string& existing_index){
     for(uint32_t i=0;i<bucket_number;++i){
         omp_init_lock(&mutex_array[i]);
     }
-    // cout<<"main parameter ok"<<endl;
-    // cout<<K<<leaf_filters_size<<trunk_size<<endl;
     buckets.resize(bucket_number,NULL);
     //buckets
     for(size_t i = 0; i <buckets.size(); ++i){
         buckets[i]=new Best<T>(trunk_size/bucket_number,leaf_filters_size/bucket_number,number_hash_function,K,"Leon"+to_string(i));
-        buckets[i]->load(&in,hot,leaf_number);
+        buckets[i]->load(&in,hot,leaf_number,use_double_index);
     }
     current_path(initial_path);
 }
@@ -535,6 +514,7 @@ void BestPart<T>::double_index(){
 
 template <class T>
 void BestPart<T>::add_leaf(){
+    leaf_number++;
     #pragma omp parallel for
     for(uint i=0;i<buckets.size();++i){
         buckets[i]->add_leaf();
@@ -544,11 +524,13 @@ void BestPart<T>::add_leaf(){
 
 
 template <class T>
-uint64_t BestPart<T>::nb_insertions  ()const{
+uint64_t BestPart<T>::nb_bit_set()const{
     uint64_t result(0);
     for(uint i=0;i<buckets.size();++i){
-        result+=buckets[i]->nb_insertions;
+        result+=buckets[i]->number_bit_set;
     }
+    cout<<intToString(result)<<" bits sets"<<endl;
+    cout<<(double)100*result/((double)leaf_number*leaf_filters_size)<<"% of bits are set"<<endl;
     return result;
 }
 

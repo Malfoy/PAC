@@ -37,12 +37,14 @@ public:
     uint large_minimizer_number;
     bool filter;
     bool hot;
+    bool use_double_index;
     string w_dir;
 
 
 
-    BestPart(const uint64_t Itrunk_size,const uint64_t Ileaf_filters_size,const uint Inumber_hash_function,const uint Ik, bool Ifilter,bool Ihot,const string Iwdir){
+    BestPart(const uint64_t Itrunk_size,const uint64_t Ileaf_filters_size,const uint Inumber_hash_function,const uint Ik, bool Ifilter,bool Ihot,const string Iwdir, bool Idouble){
         K=Ik;
+        use_double_index=Idouble;
         w_dir=Iwdir;
         hot=Ihot;
         filter=Ifilter;
@@ -92,8 +94,8 @@ public:
     vector<pair<vector<uint64_t>,uint64_t> > get_super_kmers(const string& ref);
     //HIGH LEVEL FUNCTIONS
     void insert_sequence(const string& reference,uint level,Bloom* unique_filter) ;
-    void insert_file(const string filename,uint level);
-    void insert_file_of_file(const string filename);
+    void insert_file(const string& filename,uint level);
+    void insert_file_of_file(const string& filename);
     vector<uint> query_key(const uint64_t key);
     vector<uint32_t> query_sequence(const string& reference);
     void get_stats()const;
@@ -104,6 +106,7 @@ public:
     void index();
     void double_index();
     void add_leaf();
+    uint64_t nb_bit_set()const;
     uint64_t nb_insertions()const ;
 };
 

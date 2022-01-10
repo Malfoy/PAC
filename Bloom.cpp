@@ -16,7 +16,6 @@ void Bloom::insert_key(uint64_t key){
     for(uint64_t i=0; i<number_hash_functions;++i){
         uint64_t h=hash_family(key,i)%size;//TODO SIZE POWER OF TWO
         if((*BV)[h]==false){
-            number_bit_set++;
             (*BV)[h]=true;
         }
     }
@@ -38,8 +37,12 @@ bool Bloom::check_key(uint64_t key){
 }
 
 
+
+
 void Bloom::dump_disk(bm::serializer<bm::bvector<> >& bvs){
-    ofstream out(filename,iostream::trunc);
+    filebuf fb;
+    fb.open(filename, ios::out | ios::binary | ios::trunc);
+	zstr::ostream out(&fb);
 
 	bm::serializer<bm::bvector<> >::buffer sbuf;
     unsigned char* buf = 0;
@@ -55,22 +58,20 @@ void Bloom::dump_disk(bm::serializer<bm::bvector<> >& bvs){
 
 
 void Bloom::load_disk(){
-    // cout<<filename<<endl;
-    ifstream in(filename.c_str());
+    zstr::ifstream in(filename.c_str());
     uint64_t sz;
     in.read(reinterpret_cast<char*>(&sz), sizeof(sz));
-    // cout<<sz<<endl;
     uint8_t* buff = new uint8_t[sz];
     in.read((char*)buff, sz);
-    // cout<<"read ok"<<endl;
     bm::deserialize(*(BV), buff);
-    // cout<<"deserialize_structure"<<endl;
     delete[] buff;
     available=true;
 }
 
+
+
 void Bloom::free_ram(){
     available=false;
-    BV->clear();
+    BV->reset();
 }
 

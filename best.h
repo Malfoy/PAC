@@ -29,7 +29,7 @@ public:
     uint64_t leaf_filters_size;
     uint64_t trunk_size;
     uint number_hash_function;
-    uint64_t nb_insertions;
+    uint64_t number_bit_set;
 
 
 
@@ -43,7 +43,7 @@ public:
         reverse_trunk=NULL;
         offsetUpdatekmer=1;
         offsetUpdatekmer<<=2*K;
-        nb_insertions=0;
+        number_bit_set=0;
     }
 
 
@@ -65,7 +65,7 @@ public:
     void update_kmer(uint64_t& min, char nuc)const;
     void update_kmer_RC(uint64_t& min, char nuc)const;
     void insert_last_leaf_trunk(uint level,ExponentialBloom<T>* EB);
-    void load(zstr::ifstream* out,bool hot,uint64_t leaf_number);
+    void load(zstr::ifstream* out,bool hot,uint64_t leaf_number,bool double_index);
 
     //HIGH LEVEL FUNCTIONS
     void insert_sequence(const string& reference) ;

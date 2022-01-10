@@ -163,13 +163,10 @@ int main(int argc, char **argv)
         {
             case 8:
             {
-                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir);
+                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index);
                 ever.load(existing_index);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
-                }
-                 if(use_double_index){
-                    ever.double_index();
                 }
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
@@ -178,13 +175,10 @@ int main(int argc, char **argv)
             }
             case 16:
             {
-                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir);
+                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index);
                 ever.load(existing_index);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
-                }
-                 if(use_double_index){
-                    ever.double_index();
                 }
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
@@ -193,13 +187,10 @@ int main(int argc, char **argv)
             }
             case 32:
             {
-                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir);
+                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index);
                 ever.load(existing_index);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
-                }
-                 if(use_double_index){
-                    ever.double_index();
                 }
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
@@ -218,11 +209,8 @@ int main(int argc, char **argv)
         {
             case 8:
             {
-                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir);
+                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index);
                 ever.insert_file_of_file(fof);
-                if(use_double_index){
-                    ever.double_index();
-                }
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
                 }
@@ -231,11 +219,8 @@ int main(int argc, char **argv)
             }
             case 16:
             {
-                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir);
+                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index);
                 ever.insert_file_of_file(fof);
-                if(use_double_index){
-                    ever.double_index();
-                }
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
                 }
@@ -244,11 +229,8 @@ int main(int argc, char **argv)
             }
             case 32:
             {
-                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir);
+                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index);
                 ever.insert_file_of_file(fof);
-                if(use_double_index){
-                    ever.double_index();
-                }
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
                 }
