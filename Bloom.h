@@ -33,7 +33,7 @@ public:
     }
     bool check_key(uint64_t key);
     uint64_t get_cardinality()const;
-    void dump_disk(bm::serializer<bm::bvector<> >& bvs);
+    uint64_t dump_disk(bm::serializer<bm::bvector<> >& bvs);
     void load_disk();
     void free_ram();
     

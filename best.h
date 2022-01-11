@@ -30,6 +30,7 @@ public:
     uint64_t trunk_size;
     uint number_hash_function;
     uint64_t number_bit_set;
+    uint64_t disk_space_used;
 
 
 
@@ -43,7 +44,7 @@ public:
         reverse_trunk=NULL;
         offsetUpdatekmer=1;
         offsetUpdatekmer<<=2*K;
-        number_bit_set=0;
+        number_bit_set=disk_space_used=0;
     }
 
 
@@ -77,7 +78,7 @@ public:
     void construct_reverse_trunk();
     void construct_trunk();
     void get_stats()const;
-    void serialize(zstr::ostream* out,bool hot)const;
+    void serialize(zstr::ostream* out,bool hot);
     void optimize();
     void optimize(uint i);
     void dump(uint i,bm::serializer<bm::bvector<> >& bvs);

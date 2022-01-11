@@ -77,7 +77,7 @@ void Best<T>::optimize(uint i){
 
 template <class T>
 void Best<T>::dump(uint i,bm::serializer<bm::bvector<> >& bvs){
-    leaf_filters[i]->dump_disk(bvs);
+    disk_space_used+=leaf_filters[i]->dump_disk(bvs);
     leaf_filters[i]->free_ram();
 }
 
@@ -225,19 +225,21 @@ vector<T> Best<T>::query_key(const uint64_t key){
 
 
 template <class T>
-void Best<T>::serialize(zstr::ostream* out,bool hot)const{
+void Best<T>::serialize(zstr::ostream* out,bool hot){
     void* point = &(trunk->filter[0]);
     out->write((char*)point, sizeof(T)*trunk_size);
+    disk_space_used+=sizeof(T)*trunk_size;
     if(reverse_trunk!=NULL){
         void* point = &(reverse_trunk->filter[0]);
         out->write((char*)point, sizeof(T)*trunk_size);
+        disk_space_used+=sizeof(T)*trunk_size;
     }
     if(hot){
         bm::serializer<bm::bvector<> > bvs;
         bvs.byte_order_serialization(false);
         bvs.gap_length_serialization(false);
         for(uint i = 0; i < leaf_filters.size(); ++i){
-            leaf_filters[i]->dump_disk(bvs);
+            disk_space_used+=leaf_filters[i]->dump_disk(bvs);
         }
     }
 }

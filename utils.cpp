@@ -169,15 +169,16 @@ void Biogetline(zstr::ifstream* in,string& result,char type,uint K,string& heade
 }
 
 
+
 uint64_t approx_power2(uint64_t n){
     uint64_t lower(1<<asm_log2(n));
     uint64_t upper((uint64_t)1<<(uint64_t)ceil(log2(n)));
-    //~ cout<<lower<<" "<<upper<<" "<<n<<endl;
     if(lower!=n){
         cout<<intToString(n)<<" is not a power of two, I will use "<<intToString(upper)<<" instead"<<endl;
     }
     return upper;
 }
+
 
 
 uint64_t asm_log2(const uint64_t x) {

@@ -29,9 +29,9 @@ public:
     uint64_t get_cardinality(uint level)const;
 
     ExponentialBloom(const uint64_t Isize, const uint Inumber_hash_functions){
-        size=Isize;
+        size=Isize-1;
         number_hash_functions=Inumber_hash_functions;
-        filter.resize(size,0);
+        filter.resize(size+1,0);
         for(uint32_t i=0; i<1024;++i) {
             omp_init_lock(&lock[i]);
         }

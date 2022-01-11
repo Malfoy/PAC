@@ -1,31 +1,34 @@
 #include "ExponentialBloom.h"
 #include "utils.h"
 
+
     
 template <class T>
 void ExponentialBloom<T>::insert_key(uint64_t key,uint level){
     for(uint64_t i=0; i<number_hash_functions;++i){
-        uint64_t h=hash_family(key,i)%size;//TODO SIZE POWER OF TWO
+        uint64_t h=hash_family(key,i)&size;//TODO SIZE POWER OF TWO
         // omp_set_lock(&lock[h%1024]);
         if(filter[h]==level){
             filter[h]++;
-        }else if(filter[h]>level+1){
-            cout<<"ERROR 1"<<endl;
-        }else if(filter[h]<level){
-            cout<<"ERROR 2"<<endl;
-            cout<<(uint)filter[h]<<" "<<level<<endl;
-            cin.get();
         }
+        //~ else if(filter[h]>level+1){
+            //~ cout<<"ERROR 1"<<endl;
+        //~ }else if(filter[h]<level){
+            //~ cout<<"ERROR 2"<<endl;
+            //~ cout<<(uint)filter[h]<<" "<<level<<endl;
+            //~ cin.get();
+        //~ }
         // omp_unset_lock(&lock[h%1024]);
     }
 }
+
 
 
 template <class T>
 uint8_t ExponentialBloom<T>::check_key(uint64_t key)const{
     uint8_t result=-1;
     for(uint64_t i=0; i<number_hash_functions;++i){
-        uint64_t h=hash_family(key,i)%size;//TODO SIZE POWER OF TWO
+        uint64_t h=hash_family(key,i)&size;//TODO SIZE POWER OF TWO
         if(filter[h]<result){
             result=filter[h];
         }
@@ -39,7 +42,7 @@ uint8_t ExponentialBloom<T>::check_key(uint64_t key)const{
 template <class T>
 bool ExponentialBloom<T>::check_key(uint64_t key,uint level)const{
     for(uint64_t i=0; i<number_hash_functions;++i){
-        uint64_t h=hash_family(key,i)%size;//TODO SIZE POWER OF TWO
+        uint64_t h=hash_family(key,i)&size;//TODO SIZE POWER OF TWO
         if(filter[h]<level){
             return false;
         }

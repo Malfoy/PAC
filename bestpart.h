@@ -42,14 +42,15 @@ public:
 
 
 
-    BestPart(const uint64_t Itrunk_size,const uint64_t Ileaf_filters_size,const uint Inumber_hash_function,const uint Ik, bool Ifilter,bool Ihot,const string Iwdir, bool Idouble){
+    BestPart(const uint64_t Itrunk_size,const uint64_t Ileaf_filters_size,const uint Inumber_hash_function,const uint Ik, bool Ifilter,bool Ihot,const string Iwdir, bool Idouble,uint bucketing){
+    cout<<"I index "<<iK"mers with   Bloom filters of size " <<intToString(Itrunk_size)<<" using "<<intToString(1<<(2*bucketing))<<" partitions "<<endl;
         K=Ik;
         use_double_index=Idouble;
         w_dir=Iwdir;
         hot=Ihot;
         filter=Ifilter;
         leaf_number=0;
-        small_minimizer_size=4;
+        small_minimizer_size=bucketing;
         bucket_number=1<<(2*small_minimizer_size);
         large_minimizer_size=small_minimizer_size+3;
         large_minimizer_number=1<<(2*large_minimizer_size);

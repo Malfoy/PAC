@@ -14,7 +14,7 @@ using namespace filesystem;
 
 void Bloom::insert_key(uint64_t key){
     for(uint64_t i=0; i<number_hash_functions;++i){
-        uint64_t h=hash_family(key,i)&size;//TODO SIZE POWER OF TWO
+        uint64_t h=hash_family(key,i)&size;
         //~ if((*BV)[h]==false){
             (*BV)[h]=true;
         //~ }
@@ -28,7 +28,7 @@ bool Bloom::check_key(uint64_t key){
         load_disk();
     }
     for(uint64_t i=0; i<number_hash_functions;++i){
-        uint64_t h=hash_family(key,i)&size;//TODO SIZE POWER OF TWO
+        uint64_t h=hash_family(key,i)&size;
         if((*BV)[h]==false){
             return false;
         }
@@ -39,7 +39,7 @@ bool Bloom::check_key(uint64_t key){
 
 
 
-void Bloom::dump_disk(bm::serializer<bm::bvector<> >& bvs){
+uint64_t Bloom::dump_disk(bm::serializer<bm::bvector<> >& bvs){
     filebuf fb;
     fb.open(filename, ios::out | ios::binary | ios::trunc);
 	zstr::ostream out(&fb);
@@ -52,6 +52,7 @@ void Bloom::dump_disk(bm::serializer<bm::bvector<> >& bvs){
     auto point2 = &buf[0];
     out.write(reinterpret_cast<const char*>(&sz), sizeof(sz));
     out.write((char*)point2, sz);
+    return sz;
 
 }
 

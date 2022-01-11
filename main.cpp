@@ -11,9 +11,9 @@
 #include <filesystem>
 
 
+
 using namespace std;
 using namespace chrono;
-
 using namespace filesystem;
 
 
@@ -21,8 +21,11 @@ using namespace filesystem;
 string fof(""), w_dir("My_index"), query_file(""),existing_index(""),query_output("output.gz");
 uint16_t nb_hash_func(1), bit_encoding(16);
 uint32_t kmer_size(31);
+uint32_t nb_partition(3);
 uint64_t bf_size(134217728); 
+uint64_t core_number(0);
 bool use_double_index(false),filter_unique(false),hot(false);
+
 
 
 void PrintHelp()
@@ -34,7 +37,7 @@ void PrintHelp()
 			"\n INDEX CONSTRUCTION\n"
             "--fof (-f)               :     Build index from file of files (FASTA/Q/GZ allowed in file of files)\n\n"
             "--load (-l)              :     Load index from folder \n\n"
-			"--dir (-d)               :     Write index in folder\n"
+			"--dir (-d)               :     Write index in folder (default: My_index)\n"
             "--hot (-h)               :     Keep all Bloom in RAM, (fast but expensive mode)\n"
 			
 			"\n INDEX QUERY\n"
@@ -47,6 +50,8 @@ void PrintHelp()
 			"-n                       :     Bloom filter's number of hash functions (default: " << intToString( nb_hash_func) << ")\n"
 			"-e                       :     Bit encoding, possible values are 8 (max 256 files), 16 (max 65,636 files), 32 (Max 4,294,967,296 files) (default: " << bit_encoding << ")\n"
             "-u                       :     Filter unique Kmers \n"
+            "-p                       :     Partitionning filters in 4^p files (default: "<<nb_partition<<" for "<<intToString(1<<(2*nb_partition))<<" file per filter)\n"
+            "-c                       :     Number of core to use (default: all)\n"
             "-i                       :     Build double index for faster queries \n";
 
 	exit(1);
@@ -54,10 +59,9 @@ void PrintHelp()
 
 
 
-
 void ProcessArgs(int argc, char** argv)
 {
-	const char* const short_opts = "k:d:q:b:f:e:l:n:hiuo:";
+	const char* const short_opts = "k:d:q:b:f:e:l:n:hiuo:p:c:";
 	const option long_opts[] = 
 	{
 		{"index", no_argument, nullptr, 'i'},
@@ -87,6 +91,12 @@ void ProcessArgs(int argc, char** argv)
 				break;
 			case 'k':
 				kmer_size=stoi(optarg);
+				break;
+            case 'p':
+				nb_partition=stoi(optarg);
+				break;
+            case 'c':
+				core_number=stoi(optarg);
 				break;
 			case 'd':
 				w_dir=absolute(optarg);
@@ -139,7 +149,10 @@ void ProcessArgs(int argc, char** argv)
 int main(int argc, char **argv)
 {
     omp_set_nested(1);
-    // omp_set_num_threads(1);
+    if(core_number!=0){
+        omp_set_num_threads(1);
+    }
+    
 	ProcessArgs(argc, argv);
 	if (argc < 2)
 	{
@@ -164,7 +177,7 @@ int main(int argc, char **argv)
         {
             case 8:
             {
-                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index);
+                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index,nb_partition);
                 ever.load(existing_index);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
@@ -176,7 +189,7 @@ int main(int argc, char **argv)
             }
             case 16:
             {
-                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index);
+                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index,nb_partition);
                 ever.load(existing_index);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
@@ -188,7 +201,7 @@ int main(int argc, char **argv)
             }
             case 32:
             {
-                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index);
+                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index,nb_partition);
                 ever.load(existing_index);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
@@ -210,7 +223,7 @@ int main(int argc, char **argv)
         {
             case 8:
             {
-                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index);
+                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index,nb_partition);
                 ever.insert_file_of_file(fof);
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
@@ -220,7 +233,7 @@ int main(int argc, char **argv)
             }
             case 16:
             {
-                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index);
+                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index,nb_partition);
                 ever.insert_file_of_file(fof);
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
@@ -230,7 +243,7 @@ int main(int argc, char **argv)
             }
             case 32:
             {
-                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index);
+                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index,nb_partition);
                 ever.insert_file_of_file(fof);
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);

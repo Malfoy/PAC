@@ -390,8 +390,8 @@ void BestPart<T>::insert_file_of_file(const string& filename){
     auto  middle = chrono::system_clock::now();
     chrono::duration<double> elapsed_seconds = middle - start;
     cout <<  "Bloom construction time: " << elapsed_seconds.count() << "s\n";
-    cout<<intToString(getMemorySelfMaxUsed()/1000)<<" MB total"<<endl;
-    cout<<intToString(getMemorySelfMaxUsed()/(1000*leaf_number))<<" MB per file ("<<leaf_number<<" files)"<<endl;
+    cout<<intToString(getMemorySelfMaxUsed())<<" KB total"<<endl;
+    cout<<intToString(getMemorySelfMaxUsed()/(leaf_number))<<" KB per file ("<<leaf_number<<" files)"<<endl;
     index();
     if(use_double_index){
         double_index();
@@ -402,8 +402,8 @@ void BestPart<T>::insert_file_of_file(const string& filename){
     cout <<  "Exponential Bloom construction time: " << elapsed_seconds.count() << "s\n";
     elapsed_seconds = end - start;
     cout <<  "Total Index time: " << elapsed_seconds.count() << "s\n";
-    cout<<intToString(getMemorySelfMaxUsed()/1000)<<" MB total"<<endl;
-    cout<<intToString(getMemorySelfMaxUsed()/(1000*leaf_number))<<" MB per file"<<endl;
+    cout<<intToString(getMemorySelfMaxUsed())<<" kB total"<<endl;
+    cout<<intToString(getMemorySelfMaxUsed()/(leaf_number))<<" kB per file"<<endl;
     current_path(old);
 }
 
@@ -422,6 +422,7 @@ void BestPart<T>::serialize()const{
     }else{
         create_directory(p);
     }
+    uint64_t disk_space_used(0);
     current_path(p);
     string filename("MainIndex");
     filebuf fb;
@@ -439,10 +440,12 @@ void BestPart<T>::serialize()const{
     //buckets
     for(size_t i = 0; i <buckets.size(); ++i){
         buckets[i]->serialize(&out,hot);
+        disk_space_used+=buckets[i]->disk_space_used;
     }
     out<<flush;
     fb.close();
     current_path(initial_path);
+    cout<<"Index use "<<intToString(disk_space_used)<<" Bytes on disk"<<endl;
 }
 
 
