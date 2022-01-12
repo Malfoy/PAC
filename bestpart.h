@@ -59,7 +59,7 @@ public:
         buckets.resize(bucket_number,NULL);
         mutex_array=new omp_lock_t[bucket_number];
         for(uint32_t i=0;i<bucket_number;++i){
-            buckets[i]=new Best<T>(trunk_size/bucket_number,leaf_filters_size/bucket_number,number_hash_function,K,"Leon"+to_string(i));
+            buckets[i]=new Best<T>(trunk_size/bucket_number,leaf_filters_size/bucket_number,number_hash_function,K,"B"+to_string(i));
             omp_init_lock(&mutex_array[i]);
         }
         offsetUpdatekmer=1;
@@ -99,7 +99,7 @@ public:
     vector<uint> query_key(const uint64_t key);
     vector<uint32_t> query_sequence(const string& reference);
     void load_super_kmer(vector<vector<pair<uint64_t,uint32_t> > >&colored_kmer_per_bucket,uint32_t query_id, const string& reference);
-    void query_bucket(vector<pair<uint64_t,uint32_t> >& colored_kmer,vector< pair<string,vector<uint32_t> > >& result, uint bucket_number);
+    uint64_t query_bucket(vector<pair<uint64_t,uint32_t> >& colored_kmer,vector< pair<string,vector<uint32_t> > >& result, uint bucket_number);
     void get_stats()const;
     void optimize();
     void query_file(const string& reference,const string& output);

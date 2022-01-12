@@ -243,13 +243,10 @@ void BestPart<T>::query_file(const string& filename, const string& output){
     current_path(w_dir);
     vector< pair<string,vector<uint32_t> > > result;
     vector<vector<pair<uint64_t,uint32_t> > > colored_kmer_per_bucket(bucket_number);
-    // #pragma omp parallel
+    #pragma omp parallel
     {
-        string ref,header;
-        
+        string ref,header; 
         uint32_t query_id;
-        
-        
         while(not in.eof()) {
             #pragma omp critical (inputfile)
             {
@@ -262,11 +259,11 @@ void BestPart<T>::query_file(const string& filename, const string& output){
             }
         }
     }
+    uint64_t sum_query=0;
     for(uint i=0;i<bucket_number;i++) {
-        query_bucket(colored_kmer_per_bucket[i],result,i);
+        sum_query+=query_bucket(colored_kmer_per_bucket[i],result,i);
     }
     for(uint i=0;i<result.size();i++) {
-        #pragma omp critical (output_file)
         {   
             out<<result[i].first<<"\n";
             for(uint j=0;j<result[i].second.size();j++){
@@ -278,7 +275,8 @@ void BestPart<T>::query_file(const string& filename, const string& output){
     out.close();
     auto end = std::chrono::system_clock::now();
     chrono::duration<double> elapsed_seconds = end - start;
-    cout <<  "Query time: " << elapsed_seconds.count() << "s\n";
+    cout <<  "Query time: " << elapsed_seconds.count() << "s for "<<intToString(sum_query)<<" kmer query or "<<intToString((double)sum_query/elapsed_seconds.count()) << " query per second  \n";
+
     current_path(old);
 }
 
@@ -288,23 +286,35 @@ template <class T>
 void BestPart<T>::load_super_kmer(vector<vector<pair<uint64_t,uint32_t> > >&colored_kmer_per_bucket,uint32_t query_id, const string& reference){
     auto V(get_super_kmers(reference));
     for(uint32_t i = 0; i < V.size();++i){
+        omp_set_lock(&mutex_array[V[i].second]);
         for(uint32_t j = 0; j < V[i].first.size();++j){
             (colored_kmer_per_bucket[V[i].second]).push_back({V[i].first[j],query_id});
         }
+        omp_unset_lock(&mutex_array[V[i].second]);
     }
 }
 
 
 template <class T>
-void BestPart<T>::query_bucket(vector<pair<uint64_t,uint32_t> >& colored_kmer,vector< pair<string,vector<uint32_t> > >& result, uint bucket_id){
-    vector<T> colors;
-    for(uint32_t i = 0; i < colored_kmer.size();++i){
-        colors=buckets[bucket_id]->query_key(colored_kmer[i].first);
-        for(uint32_t j = 0; j <colors.size();++j){
-            result[colored_kmer[i].second].second[colors[j]]++;
+uint64_t BestPart<T>::query_bucket(vector<pair<uint64_t,uint32_t> >& colored_kmer,vector< pair<string,vector<uint32_t> > >& result, uint bucket_id){
+    uint64_t sum(0);
+    #pragma omp parallel
+    {
+        vector<T> colors;
+        #pragma omp for
+        for(uint32_t i = 0; i < colored_kmer.size();++i){
+            colors=buckets[bucket_id]->query_key(colored_kmer[i].first);
+            #pragma omp atomic
+            sum++;
+            for(uint32_t j = 0; j <colors.size();++j){
+                #pragma omp atomic
+                result[colored_kmer[i].second].second[colors[j]]++;
+                
+            }
         }
     }
     buckets[bucket_id]->free_ram();
+    return sum;
 }
 
 
@@ -436,6 +446,7 @@ void BestPart<T>::insert_file_of_file(const string& filename){
     cout <<  "Exponential Bloom construction time: " << elapsed_seconds.count() << "s\n";
     elapsed_seconds = end - start;
     cout <<  "Total Index time: " << elapsed_seconds.count() << "s\n";
+    cout <<  "Index time per file: " << elapsed_seconds.count()/leaf_number << "s\n";
     cout<<intToString(getMemorySelfMaxUsed())<<" kB total"<<endl;
     cout<<intToString(getMemorySelfMaxUsed()/(leaf_number))<<" kB per file"<<endl;
     current_path(old);
@@ -521,7 +532,7 @@ void BestPart<T>::load(const string& existing_index){
     buckets.resize(bucket_number,NULL);
     //buckets
     for(size_t i = 0; i <buckets.size(); ++i){
-        buckets[i]=new Best<T>(trunk_size/bucket_number,leaf_filters_size/bucket_number,number_hash_function,K,"Leon"+to_string(i));
+        buckets[i]=new Best<T>(trunk_size/bucket_number,leaf_filters_size/bucket_number,number_hash_function,K,"B"+to_string(i));
         buckets[i]->load(&in,hot,leaf_number,use_double_index);
     }
     current_path(initial_path);

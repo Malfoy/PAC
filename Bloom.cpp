@@ -24,8 +24,12 @@ void Bloom::insert_key(uint64_t key){
 
 
 bool Bloom::check_key(uint64_t key){
+
     if(not available){
+        #pragma omp critical (available)
+        {
         load_disk();
+        }
     }
     for(uint64_t i=0; i<number_hash_functions;++i){
         uint64_t h=hash_family(key,i)&size;
@@ -59,14 +63,16 @@ uint64_t Bloom::dump_disk(bm::serializer<bm::bvector<> >& bvs){
 
 
 void Bloom::load_disk(){
-    zstr::ifstream in(filename.c_str());
-    uint64_t sz;
-    in.read(reinterpret_cast<char*>(&sz), sizeof(sz));
-    uint8_t* buff = new uint8_t[sz];
-    in.read((char*)buff, sz);
-    bm::deserialize(*(BV), buff);
-    delete[] buff;
-    available=true;
+    if(not available){
+        zstr::ifstream in(filename.c_str());
+        uint64_t sz;
+        in.read(reinterpret_cast<char*>(&sz), sizeof(sz));
+        uint8_t* buff = new uint8_t[sz];
+        in.read((char*)buff, sz);
+        bm::deserialize(*(BV), buff);
+        delete[] buff;
+        available=true;
+    }
 }
 
 
