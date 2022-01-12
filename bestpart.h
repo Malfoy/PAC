@@ -43,7 +43,6 @@ public:
 
 
     BestPart(const uint64_t Itrunk_size,const uint64_t Ileaf_filters_size,const uint Inumber_hash_function,const uint Ik, bool Ifilter,bool Ihot,const string Iwdir, bool Idouble,uint bucketing){
-    cout<<"I index "<<iK"mers with   Bloom filters of size " <<intToString(Itrunk_size)<<" using "<<intToString(1<<(2*bucketing))<<" partitions "<<endl;
         K=Ik;
         use_double_index=Idouble;
         w_dir=Iwdir;

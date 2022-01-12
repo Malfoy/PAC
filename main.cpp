@@ -172,7 +172,6 @@ int main(int argc, char **argv)
 
     //WE BUILD THE INDEX
     if(existing_index != ""){
-        cout << "LOADING index from file " << existing_index << endl;
         switch (bit_encoding)
         {
             case 8:

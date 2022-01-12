@@ -258,7 +258,7 @@ void Best<T>::load(zstr::ifstream* out,bool hot, uint64_t leaf_number, bool doub
     }
    
     for(uint i = 0; i < leaf_number; ++i){
-        leaf_filters.push_back(new Bloom(leaf_filters_size,number_hash_function,prefix+to_string(leaf_filters.size())));
+        leaf_filters.push_back(new Bloom(leaf_filters_size,number_hash_function,prefix+to_string(leaf_filters.size()),false));
         if(hot){
             leaf_filters[i]->load_disk();
         }

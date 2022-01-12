@@ -70,19 +70,6 @@ void BestPart<T>::insert_keys(const vector<uint64_t>& key,uint minimizer,uint le
 
 
 
-template <class T>
-vector<T> BestPart<T>::query_keys(const vector<uint64_t>& key,uint minimizer){
-    vector<T> result;
-    vector<T> colors;
-    for(uint i=0;i<key.size(); ++i){
-        colors=buckets[minimizer]->query_key(key[i]);
-        result.insert( result.end(), colors.begin(), colors.end() );
-        colors.clear();
-    }
-    return result;
-}
-
-
 
 //TODO CAN BE IMPROVED?
 template <class T>
@@ -263,9 +250,7 @@ void BestPart<T>::query_file(const string& filename, const string& output){
              Biogetline(&in,ref,type,K,header);
             }
             if(ref.size()>K) {
-                // cout<<"query_sequence part go"<<endl;
                 colors_count=query_sequence(ref);
-                //  cout<<"query_sequence  part end"<<endl;
                 #pragma omp critical (output_file)
                 {   
                     out<<header<<"\n";
@@ -286,11 +271,6 @@ void BestPart<T>::query_file(const string& filename, const string& output){
 
 
 
-
-
-
-
-
 template <class T>
 vector<uint32_t> BestPart<T>::query_sequence(const string& reference){
     vector<uint32_t> result(leaf_number,0);
@@ -306,6 +286,20 @@ vector<uint32_t> BestPart<T>::query_sequence(const string& reference){
         }
     }
     
+    return result;
+}
+
+
+
+template <class T>
+vector<T> BestPart<T>::query_keys(const vector<uint64_t>& key,uint minimizer){
+    vector<T> result;
+    vector<T> colors;
+    for(uint i=0;i<key.size(); ++i){
+        colors=buckets[minimizer]->query_key(key[i]);
+        result.insert(result.end(), colors.begin(), colors.end() );
+        colors.clear();
+    }
     return result;
 }
 
@@ -349,6 +343,8 @@ void  BestPart<T>::insert_file(const string& filename, uint level){
 
 template <class T>
 void BestPart<T>::insert_file_of_file(const string& filename){
+    cout<<"I index "<<K<<"mers with Bloom filters of size " <<intToString(trunk_size)<<" with "<<number_hash_function<<" hash functions  using "<<intToString(1<<(2*small_minimizer_size))<<" partitions "<<endl;
+
     path old(current_path());
     path vodka(absolute(filename));
     zstr::ifstream in(vodka);
@@ -480,6 +476,7 @@ void BestPart<T>::load(const string& existing_index){
     offsetUpdatekmer<<=2*K;
     offsetUpdateminimizer=1;
     offsetUpdateminimizer<<=(2*large_minimizer_size);
+    w_dir=existing_index;
     for(uint32_t i=0;i<bucket_number;++i){
         omp_init_lock(&mutex_array[i]);
     }
@@ -490,6 +487,8 @@ void BestPart<T>::load(const string& existing_index){
         buckets[i]->load(&in,hot,leaf_number,use_double_index);
     }
     current_path(initial_path);
+        cout<<"The index  use "<<K<<"mers with Bloom filters of size " <<intToString(trunk_size)<<" with "<<number_hash_function<<" hash functions  using "<<intToString(1<<(2*small_minimizer_size))<<" partitions "<<endl;
+
 }
 
 

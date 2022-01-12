@@ -37,12 +37,12 @@ public:
     void load_disk();
     void free_ram();
     
-    Bloom(const uint64_t Isize, uint Inumber_hash_functions,const string& Ifilename){
+    Bloom(const uint64_t Isize, uint Inumber_hash_functions,const string& Ifilename,bool Iavailable=true){
         filename=Ifilename;
         size=Isize-1;
         number_hash_functions=Inumber_hash_functions;
         BV=new bm::bvector<>(Isize,bm::BM_GAP);
-        available=true;
+        available=Iavailable;
         
     }
 
