@@ -98,6 +98,8 @@ public:
     void insert_file_of_file(const string& filename);
     vector<uint> query_key(const uint64_t key);
     vector<uint32_t> query_sequence(const string& reference);
+    void load_super_kmer(vector<vector<pair<uint64_t,uint32_t> > >&colored_kmer_per_bucket,uint32_t query_id, const string& reference);
+    void query_bucket(vector<pair<uint64_t,uint32_t> >& colored_kmer,vector< pair<string,vector<uint32_t> > >& result, uint bucket_number);
     void get_stats()const;
     void optimize();
     void query_file(const string& reference,const string& output);

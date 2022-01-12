@@ -239,27 +239,40 @@ void BestPart<T>::query_file(const string& filename, const string& output){
     char type=get_data_type(filename);
     zstr::ifstream in(filename);
     path old(current_path());
+    vector<uint32_t> colors_count(leaf_number,0);
     current_path(w_dir);
-    #pragma omp parallel
+    vector< pair<string,vector<uint32_t> > > result;
+    vector<vector<pair<uint64_t,uint32_t> > > colored_kmer_per_bucket(bucket_number);
+    // #pragma omp parallel
     {
         string ref,header;
-        vector<uint32_t> colors_count;
+        
+        uint32_t query_id;
+        
+        
         while(not in.eof()) {
             #pragma omp critical (inputfile)
             {
-             Biogetline(&in,ref,type,K,header);
+                Biogetline(&in,ref,type,K,header);
+                result.push_back({header,colors_count});
+                query_id=result.size()-1;
             }
             if(ref.size()>K) {
-                colors_count=query_sequence(ref);
-                #pragma omp critical (output_file)
-                {   
-                    out<<header<<"\n";
-                    for(uint i=0;i<colors_count.size();i++){
-                        out<<colors_count[i]<<' ';
-                    }
-                    out<<"\n";
-                }
+                load_super_kmer(colored_kmer_per_bucket,query_id,ref);
             }
+        }
+    }
+    for(uint i=0;i<bucket_number;i++) {
+        query_bucket(colored_kmer_per_bucket[i],result,i);
+    }
+    for(uint i=0;i<result.size();i++) {
+        #pragma omp critical (output_file)
+        {   
+            out<<result[i].first<<"\n";
+            for(uint j=0;j<result[i].second.size();j++){
+                out<<result[i].second[j]<<' ';
+            }
+            out<<"\n";
         }
     }
     out.close();
@@ -267,6 +280,31 @@ void BestPart<T>::query_file(const string& filename, const string& output){
     chrono::duration<double> elapsed_seconds = end - start;
     cout <<  "Query time: " << elapsed_seconds.count() << "s\n";
     current_path(old);
+}
+
+
+
+template <class T>
+void BestPart<T>::load_super_kmer(vector<vector<pair<uint64_t,uint32_t> > >&colored_kmer_per_bucket,uint32_t query_id, const string& reference){
+    auto V(get_super_kmers(reference));
+    for(uint32_t i = 0; i < V.size();++i){
+        for(uint32_t j = 0; j < V[i].first.size();++j){
+            (colored_kmer_per_bucket[V[i].second]).push_back({V[i].first[j],query_id});
+        }
+    }
+}
+
+
+template <class T>
+void BestPart<T>::query_bucket(vector<pair<uint64_t,uint32_t> >& colored_kmer,vector< pair<string,vector<uint32_t> > >& result, uint bucket_id){
+    vector<T> colors;
+    for(uint32_t i = 0; i < colored_kmer.size();++i){
+        colors=buckets[bucket_id]->query_key(colored_kmer[i].first);
+        for(uint32_t j = 0; j <colors.size();++j){
+            result[colored_kmer[i].second].second[colors[j]]++;
+        }
+    }
+    buckets[bucket_id]->free_ram();
 }
 
 
