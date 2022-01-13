@@ -21,10 +21,10 @@ using namespace filesystem;
 string fof(""), w_dir("My_index"), query_file(""),existing_index(""),query_output("output.gz");
 uint16_t nb_hash_func(1), bit_encoding(16);
 uint32_t kmer_size(31);
-uint32_t nb_partition(4);
+uint32_t nb_partition(1);
 uint64_t bf_size(134217728); 
 uint64_t core_number(0);
-bool use_double_index(false),filter_unique(false),hot(false);
+bool use_double_index(false),filter_unique(false);
 
 
 
@@ -38,8 +38,7 @@ void PrintHelp()
             "--fof (-f)               :     Build index from file of files (FASTA/Q/GZ allowed in file of files)\n\n"
             "--load (-l)              :     Load index from folder \n\n"
 			"--dir (-d)               :     Write index in folder (default: My_index)\n"
-            "--hot (-h)               :     Keep all Bloom in RAM, (fast but expensive mode)\n"
-			
+
 			"\n INDEX QUERY\n"
 			"--query (-q)             :     Query sequence file (FASTA/Q/GZ)\n"
             "--out (-o)               :     Write query output in file (default: output.gz)\n"
@@ -68,7 +67,6 @@ void ProcessArgs(int argc, char** argv)
 		{"fof", required_argument, nullptr, 'f'},
 		{"dir", required_argument, nullptr, 'd'},
         {"out", required_argument, nullptr, 'o'},
-		{"hot", no_argument, nullptr, 'h'},
 		{"query", required_argument, nullptr, 'q'},
 		{"load", required_argument, nullptr, 'l'},
         {"uniqu", required_argument, nullptr, 'u'},
@@ -99,7 +97,7 @@ void ProcessArgs(int argc, char** argv)
 				core_number=stoi(optarg);
 				break;
 			case 'd':
-				w_dir=absolute(optarg);
+				w_dir=(optarg);
 				break;
 			case 'f':
 				fof=optarg;
@@ -123,7 +121,7 @@ void ProcessArgs(int argc, char** argv)
 				bit_encoding=stoi(optarg);
 				break;
 			case 'h': // -h or --help
-				hot=true;
+				PrintHelp();
 				break;
 			case '?': // Unrecognized option
 				PrintHelp();
@@ -152,6 +150,7 @@ int main(int argc, char **argv)
     if(core_number!=0){
         omp_set_num_threads(1);
     }
+
     
 	ProcessArgs(argc, argv);
 	if (argc < 2)
@@ -169,15 +168,16 @@ int main(int argc, char **argv)
         return -1;
     }
     bf_size=approx_power2(bf_size);
-
+    w_dir=filesystem::absolute(w_dir);
+    cout<<w_dir<<endl;
     //WE BUILD THE INDEX
     if(existing_index != ""){
+        existing_index=absolute(existing_index);
         switch (bit_encoding)
         {
             case 8:
             {
-                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index,nb_partition);
-                ever.load(existing_index);
+                BestPart<uint8_t> ever(existing_index);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
                 }
@@ -188,8 +188,7 @@ int main(int argc, char **argv)
             }
             case 16:
             {
-                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index,nb_partition);
-                ever.load(existing_index);
+                BestPart<uint16_t> ever(existing_index);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
                 }
@@ -200,8 +199,7 @@ int main(int argc, char **argv)
             }
             case 32:
             {
-                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index,nb_partition);
-                ever.load(existing_index);
+                BestPart<uint32_t> ever(existing_index);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
                 }
@@ -213,40 +211,40 @@ int main(int argc, char **argv)
         }
     }else if (fof!="")
 	{
-		
-
-    
 
         switch (bit_encoding)
         {
             case 8:
             {
-                BestPart<uint8_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index,nb_partition);
+                BestPart<uint8_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition);
                 ever.insert_file_of_file(fof);
+                ever.serialize();
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
                 }
-                ever.serialize();
                 break;
             }
             case 16:
             {
-                BestPart<uint16_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index,nb_partition);
+                BestPart<uint16_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition);
                 ever.insert_file_of_file(fof);
+                ever.serialize();
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
                 }
-                ever.serialize();
                 break;
             }
             case 32:
             {
-                BestPart<uint32_t> ever(bf_size, bf_size, nb_hash_func, kmer_size,filter_unique,hot,w_dir,use_double_index,nb_partition);
+                BestPart<uint32_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition);
                 ever.insert_file_of_file(fof);
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
                 }
                 ever.serialize();
+                if(query_file!=""){
+                    ever.query_file(query_file,query_output);
+                }
                 break;
             }
         }

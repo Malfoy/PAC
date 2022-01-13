@@ -19,12 +19,10 @@ using namespace filesystem;
 
 template <class T>
 void Best<T>::construct_reverse_trunk(){
-    reverse_trunk=new ExponentialBloom<T>(trunk_size,number_hash_function);
+    reverse_trunk=new ExponentialBloom<T>(size,number_hash_function);
     uint64_t lfs(leaf_filters.size()-1);
     for(int i = leaf_filters.size()-1; i>=0; i--){
-        insert_leaf_trunk(i,lfs-i,trunk);//TODO TO CHECK
-        //~ insert_last_leaf_trunk(i,reverse_trunk);
-        
+        insert_leaf_trunk(i,lfs-i,trunk);        
     }
 }
 
@@ -32,11 +30,10 @@ void Best<T>::construct_reverse_trunk(){
 
 template <class T>
 void Best<T>::construct_trunk(){
-    trunk=new ExponentialBloom<T>(trunk_size,number_hash_function);
+    trunk=new ExponentialBloom<T>(size,number_hash_function);
     uint64_t lfs(leaf_filters.size()-1);
     for(uint i = 0; i<leaf_filters.size(); i++){
-        //~ insert_last_leaf_trunk(i,trunk);
-        insert_leaf_trunk(i,lfs-i,trunk);//TODO TO CHECK
+        insert_leaf_trunk(i,lfs-i,trunk);
     }
 }
 
@@ -51,7 +48,7 @@ void Best<T>::insert_key(const uint64_t key,uint level){
 
 template <class T>
 void Best<T>::add_leaf(){
-    leaf_filters.push_back(new Bloom(leaf_filters_size,number_hash_function,prefix+to_string(leaf_filters.size())));
+    leaf_filters.push_back(new Bloom<T>(this));
 }
 
 
@@ -77,7 +74,7 @@ void Best<T>::optimize(uint i){
 
 template <class T>
 void Best<T>::dump(uint i,bm::serializer<bm::bvector<> >& bvs){
-    disk_space_used+=leaf_filters[i]->dump_disk(bvs);
+    disk_space_used+=leaf_filters[i]->dump_disk(bvs,out,i);
     leaf_filters[i]->free_ram();
 }
 
@@ -87,6 +84,14 @@ template <class T>
 void Best<T>::free_ram(){
     for(uint i=0; i<leaf_filters.size(); ++i){
         leaf_filters[i]->free_ram();
+    }
+    if(trunk!=NULL){
+        delete trunk;
+        trunk=NULL;
+    }
+    if(reverse_trunk!=NULL){
+        delete reverse_trunk;
+        reverse_trunk=NULL;
     }
 }
 
@@ -124,68 +129,12 @@ void Best<T>::update_kmer_RC(uint64_t& min, char nuc)const {
 
 
 
-template <class T>
-void Best<T>::insert_last_leaf_trunk(uint level,ExponentialBloom<T>* EB){
-    Bloom* leon(leaf_filters[level]);
-    bool free_necessary = false;
-    uint64_t filter_size(EB->filter.size());
-    if(not leon->available){
-        free_necessary=true;
-        leon->load_disk();
-    }
-    uint64_t value = leon->BV->get_first();
-    uint64_t i=0;
-    for(;i<filter_size and i<value;++i){
-        if(EB->filter[i]!=0){
-            EB->filter[i]++;
-        }
-    }
-    if(value<filter_size){
-        EB->filter[value]++;
-    }else{
-        cout<<"weird hash"<<endl;
-    }
-    number_bit_set++;
-    i++;
-    do{
-        value = leon->BV->get_next(value);
-        if (value!=0 and i<filter_size){
-            for(;i<filter_size and i<value;++i){
-                if(EB->filter[i]!=0){
-                    EB->filter[i]++;
-                }
-            }
-            if(value<filter_size){
-                EB->filter[value]++;
-            }else{
-                cout<<"weird hash"<<endl;
-            }
-            number_bit_set++;
-            i++;
-        }else{
-            break;
-        }
-    } while(true);
-    for( ;i<filter_size;++i){
-        if(EB->filter[i]!=0){
-            EB->filter[i]++;
-        }
-    }
-    if(free_necessary){
-        leon->free_ram();
-    }
-}
 
 
 
 template <class T>
 void Best<T>::insert_leaf_trunk(uint level,uint indice,ExponentialBloom<T>* EB){
-    Bloom* leon(leaf_filters[level]);
-    bool free_necessary = false;
-    if(not leon->available){
-        free_necessary=true;
-        leon->load_disk();
-    }
+    Bloom<T>* leon(leaf_filters[level]);
     bm::bvector<>::enumerator en = leon->BV->first();
     bm::bvector<>::enumerator en_end = leon->BV->end();
     while (en < en_end)
@@ -195,9 +144,6 @@ void Best<T>::insert_leaf_trunk(uint level,uint indice,ExponentialBloom<T>* EB){
         }
         ++en;  
         number_bit_set++;
-    }
-    if(free_necessary){
-        leon->free_ram();
     }
 }
 
@@ -225,43 +171,50 @@ vector<T> Best<T>::query_key(const uint64_t key){
 
 
 template <class T>
-void Best<T>::serialize(zstr::ostream* out,bool hot){
+void Best<T>::serialize(){
     void* point = &(trunk->filter[0]);
-    out->write((char*)point, sizeof(T)*trunk_size);
-    disk_space_used+=sizeof(T)*trunk_size;
+    out->write((char*)point, sizeof(T)*size);
+    disk_space_used+=sizeof(T)*size;
     if(reverse_trunk!=NULL){
         void* point = &(reverse_trunk->filter[0]);
-        out->write((char*)point, sizeof(T)*trunk_size);
-        disk_space_used+=sizeof(T)*trunk_size;
+        out->write((char*)point, sizeof(T)*size);
+        disk_space_used+=sizeof(T)*size;
     }
-    if(hot){
-        bm::serializer<bm::bvector<> > bvs;
-        bvs.byte_order_serialization(false);
-        bvs.gap_length_serialization(false);
-        for(uint i = 0; i < leaf_filters.size(); ++i){
-            disk_space_used+=leaf_filters[i]->dump_disk(bvs);
-        }
+    out->flush();
+}
+
+
+
+template <class T>
+void Best<T>::load_bf(uint64_t leaf_number){
+    zstr::ifstream in(prefix);
+    for(uint i = 0; i < leaf_number; ++i){
+        uint32_t indiceBloom;
+        in.read(reinterpret_cast<char*>(&indiceBloom), sizeof(indiceBloom));
+        leaf_filters[indiceBloom]->load_disk(&in);
     }
 }
 
 
 
 template <class T>
-void Best<T>::load(zstr::ifstream* out,bool hot, uint64_t leaf_number, bool double_index ){
-    trunk=new ExponentialBloom<T>(trunk_size,number_hash_function);
-    void* point = &(trunk->filter[0]);
-    out->read((char*)point, sizeof(T)*trunk_size);
-    if(double_index){
-        reverse_trunk=new ExponentialBloom<T>(trunk_size,number_hash_function);
-        void* point = &(reverse_trunk->filter[0]);
-        out->read((char*)point, sizeof(T)*trunk_size);
-    }
-   
+void Best<T>::load(uint64_t leaf_number, bool double_index ){
     for(uint i = 0; i < leaf_number; ++i){
-        leaf_filters.push_back(new Bloom(leaf_filters_size,number_hash_function,prefix+to_string(leaf_filters.size()),false));
-        if(hot){
-            leaf_filters[i]->load_disk();
-        }
+        leaf_filters.push_back(new Bloom<T>(this));
+    }
+    zstr::ifstream in(prefix);
+    for(uint i = 0; i < leaf_number; ++i){
+        uint32_t indiceBloom;
+        in.read(reinterpret_cast<char*>(&indiceBloom), sizeof(indiceBloom));
+        leaf_filters[indiceBloom]->load_disk(&in);
+    }
+    trunk=new ExponentialBloom<T>(size,number_hash_function);
+    void* point = &(trunk->filter[0]);
+    in.read((char*)point, sizeof(T)*size);
+    if(double_index){
+        reverse_trunk=new ExponentialBloom<T>(size,number_hash_function);
+        void* point = &(reverse_trunk->filter[0]);
+        in.read((char*)point, sizeof(T)*size);
     }
 }
 

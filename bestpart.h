@@ -10,10 +10,13 @@
 #include <math.h>
 #include <cmath> 
 #include <omp.h> 
+#include <filesystem>
+
 
 
 
 using namespace std;
+using namespace filesystem;
 
 
 
@@ -27,8 +30,7 @@ public:
     uint K;
     uint64_t offsetUpdatekmer;
     uint64_t offsetUpdateminimizer;
-    uint64_t leaf_filters_size;
-    uint64_t trunk_size;
+    uint64_t size;
     uint64_t leaf_number;
     uint number_hash_function;
     uint small_minimizer_size;
@@ -36,30 +38,33 @@ public:
     uint bucket_number;
     uint large_minimizer_number;
     bool filter;
-    bool hot;
     bool use_double_index;
     string w_dir;
 
 
 
-    BestPart(const uint64_t Itrunk_size,const uint64_t Ileaf_filters_size,const uint Inumber_hash_function,const uint Ik, bool Ifilter,bool Ihot,const string Iwdir, bool Idouble,uint bucketing){
+    BestPart(const uint64_t Isize,const uint Inumber_hash_function,const uint Ik, bool Ifilter,const string Iwdir, bool Idouble,uint bucketing){
         K=Ik;
         use_double_index=Idouble;
-        w_dir=Iwdir;
-        hot=Ihot;
+        w_dir=(Iwdir);
+        path p {w_dir};
+        if(exists(p)){
+        
+        }else{
+            create_directory(p);
+        }
         filter=Ifilter;
         leaf_number=0;
         small_minimizer_size=bucketing;
         bucket_number=1<<(2*small_minimizer_size);
         large_minimizer_size=small_minimizer_size+3;
         large_minimizer_number=1<<(2*large_minimizer_size);
-        trunk_size=Itrunk_size;
-        leaf_filters_size=Ileaf_filters_size;
+        size=Isize;
         number_hash_function=Inumber_hash_function;
         buckets.resize(bucket_number,NULL);
         mutex_array=new omp_lock_t[bucket_number];
         for(uint32_t i=0;i<bucket_number;++i){
-            buckets[i]=new Best<T>(trunk_size/bucket_number,leaf_filters_size/bucket_number,number_hash_function,K,"B"+to_string(i));
+            buckets[i]=new Best<T>(size/bucket_number,number_hash_function,K,w_dir+"/P"+to_string(i));
             omp_init_lock(&mutex_array[i]);
         }
         offsetUpdatekmer=1;
@@ -67,6 +72,51 @@ public:
         offsetUpdateminimizer=1;
         offsetUpdateminimizer<<=(2*large_minimizer_size);
     }
+
+
+
+    BestPart(const string& existing_index){
+    cout<<"Loading "<<existing_index<<"..."<<endl;
+    path initial_path=current_path();
+    w_dir=existing_index;
+    path p {existing_index};
+    if(exists(p)){
+        
+    }else{
+       cout<<"I cannot found you index sorry ..."<<endl;
+       return;
+    }
+    current_path(p);
+    string filename("MainIndex");
+    zstr::ifstream in(filename);
+     // VARIOUS INTEGERS
+    in.read(reinterpret_cast< char*>(&K), sizeof(K));
+    in.read(reinterpret_cast< char*>(&size), sizeof(size));
+    in.read(reinterpret_cast< char*>(&number_hash_function), sizeof(number_hash_function));
+    in.read(reinterpret_cast< char*>(&small_minimizer_size), sizeof(small_minimizer_size));
+    in.read(reinterpret_cast< char*>(&large_minimizer_size), sizeof(large_minimizer_size));
+    in.read(reinterpret_cast< char*>(&leaf_number), sizeof(leaf_number));
+    in.read(reinterpret_cast< char*>(&use_double_index), sizeof(use_double_index));
+    bucket_number=1<<(2*small_minimizer_size);
+    large_minimizer_number=1<<(2*large_minimizer_size);
+    mutex_array=new omp_lock_t[bucket_number];
+    offsetUpdatekmer=1;
+    offsetUpdatekmer<<=2*K;
+    offsetUpdateminimizer=1;
+    offsetUpdateminimizer<<=(2*large_minimizer_size);
+    for(uint32_t i=0;i<bucket_number;++i){
+        omp_init_lock(&mutex_array[i]);
+    }
+    buckets.resize(bucket_number,NULL);
+    //buckets
+    for(size_t i = 0; i<bucket_number; ++i){
+        buckets[i]=new Best<T>(size/bucket_number,number_hash_function,K,existing_index+"/P"+to_string(i),false);
+        // buckets[i]->load(leaf_number,use_double_index);
+    }
+    current_path(initial_path);
+    cout<<"The index  use "<<K<<"mers with Bloom filters of size " <<intToString(size)<<" with "<<number_hash_function<<" hash functions  using "<<intToString(1<<(2*small_minimizer_size))<<" partitions "<<endl;
+
+}
 
 
 
@@ -89,11 +139,11 @@ public:
     void insert_last_leaf_trunk();
     uint64_t regular_minimizer_pos(uint64_t seq, uint64_t& position);
     uint64_t canonize(uint64_t x, uint64_t n);
-    void insert_keys(const vector<uint64_t>& key,uint minimizer,uint level,Bloom* unique_filter);
+    void insert_keys(const vector<uint64_t>& key,uint minimizer,uint level,Bloom<T>* unique_filter);
     vector<T> query_keys(const vector<uint64_t>& key,uint minimizer);
     vector<pair<vector<uint64_t>,uint64_t> > get_super_kmers(const string& ref);
     //HIGH LEVEL FUNCTIONS
-    void insert_sequence(const string& reference,uint level,Bloom* unique_filter) ;
+    void insert_sequence(const string& reference,uint level,Bloom<T>* unique_filter) ;
     void insert_file(const string& filename,uint level);
     void insert_file_of_file(const string& filename);
     vector<uint> query_key(const uint64_t key);

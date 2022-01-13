@@ -8,37 +8,44 @@
 #include <vector>
 #include <math.h>
 #include <cmath> 
+#include "BitMagic/src/bm.h"
+#include "BitMagic/src/bmserial.h"
+#include "BitMagic/src/bmundef.h"
 
 
 
 using namespace std;
 
+template <class T>
+class Bloom;
 
-
-//TODO SERIALIZATION
 template <class T>
 class Best{
 public:
-    vector<Bloom*> leaf_filters;
+    vector<Bloom<T>*> leaf_filters;
     string prefix;
     bool filter;
     ExponentialBloom<T>* trunk;
     ExponentialBloom<T>* reverse_trunk;
     uint K;
     uint64_t offsetUpdatekmer;
-    uint64_t leaf_filters_size;
-    uint64_t trunk_size;
+    uint64_t size;
     uint number_hash_function;
     uint64_t number_bit_set;
     uint64_t disk_space_used;
+    zstr::ofstream* out;
+    bool write;
 
 
 
-    Best(const uint64_t Itrunk_size,const uint64_t Ileaf_filters_size,const uint Inumber_hash_function,const uint Ik,const string Iprefix){
+    Best(const uint64_t Isize,const uint Inumber_hash_function,const uint Ik,const string Iprefix, bool Iwrite=true){
         K=Ik;
         prefix=Iprefix;
-        trunk_size=Itrunk_size;
-        leaf_filters_size=Ileaf_filters_size;
+        write=Iwrite;
+        if(write){
+	        out=new zstr::ofstream(Iprefix,ios::trunc);
+        }
+        size=Isize-1;
         number_hash_function=Inumber_hash_function;
         trunk=NULL;
         reverse_trunk=NULL;
@@ -55,6 +62,10 @@ public:
         for(uint i=0;i<leaf_filters.size();++i){
             delete leaf_filters[i];
         }
+        if(write){
+	        delete out;
+        }else{
+        }
     }
 
 
@@ -67,7 +78,7 @@ public:
     void update_kmer_RC(uint64_t& min, char nuc)const;
     void insert_last_leaf_trunk(uint level,ExponentialBloom<T>* EB);
     void insert_leaf_trunk(uint indice,uint level,ExponentialBloom<T>* EB);
-    void load(zstr::ifstream* out,bool hot,uint64_t leaf_number,bool double_index);
+    void load(uint64_t leaf_number,bool double_index);
 
     //HIGH LEVEL FUNCTIONS
     void insert_sequence(const string& reference) ;
@@ -78,15 +89,21 @@ public:
     void construct_reverse_trunk();
     void construct_trunk();
     void get_stats()const;
-    void serialize(zstr::ostream* out,bool hot);
+    void serialize();
     void optimize();
     void optimize(uint i);
     void dump(uint i,bm::serializer<bm::bvector<> >& bvs);
     void add_leaf();
     void free_ram();
+    void load_bf(uint64_t leaf_number);
 };
+
+
 
 template class Best<uint8_t>;
 template class Best<uint16_t>;
 template class Best<uint32_t>;
+
+
+
 #endif
