@@ -20,7 +20,7 @@ using namespace filesystem;
 template <class T>
 void Best<T>::construct_reverse_trunk(){
     reverse_trunk=new ExponentialBloom<T>(size,number_hash_function);
-    uint64_t lfs(leaf_filters.size()-1);
+    uint64_t lfs(leaf_filters.size());
     for(int i = leaf_filters.size()-1; i>=0; i--){
         insert_leaf_trunk(i,lfs-i,trunk);        
     }
@@ -31,8 +31,8 @@ void Best<T>::construct_reverse_trunk(){
 template <class T>
 void Best<T>::construct_trunk(){
     trunk=new ExponentialBloom<T>(size,number_hash_function);
-    uint64_t lfs(leaf_filters.size()-1);
-    for(uint i = 0; i<leaf_filters.size(); i++){
+    uint64_t lfs(leaf_filters.size());
+    for(uint i = 0; i<lfs; i++){
         insert_leaf_trunk(i,lfs-i,trunk);
     }
 }
@@ -152,15 +152,17 @@ void Best<T>::insert_leaf_trunk(uint level,uint indice,ExponentialBloom<T>* EB){
 template <class T>
 vector<T> Best<T>::query_key(const uint64_t key){
     vector<T> result;
-    int min_level=0;
+    uint min_level=0;
     if(trunk!=NULL){
         min_level=leaf_filters.size()-trunk->check_key(key);
+        //~ cout<<(uint)trunk->check_key(key)<<" "<<min_level<<endl;
+        //~ cin.get();
     }
-    int max_level=leaf_filters.size();
+    uint max_level=leaf_filters.size();
     if(reverse_trunk!=NULL){
         max_level=reverse_trunk->check_key(key);
     }
-    for(int i=min_level;i<max_level;i++){
+    for(uint i=min_level;i<max_level;i++){
         if(leaf_filters[i]->check_key(key)){
             result.push_back(i);
         }

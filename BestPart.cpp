@@ -250,8 +250,10 @@ void BestPart<T>::query_file(const string& filename, const string& output){
             #pragma omp critical (inputfile)
             {
                 Biogetline(&in,ref,type,K,header);
-                result.push_back({header,colors_count});
-                query_id=result.size()-1;
+                if(ref.size()>K){
+                    result.push_back({header,colors_count});
+                    query_id=result.size()-1;
+                }
             }
             if(ref.size()>K) {
                 load_super_kmer(colored_kmer_per_bucket,query_id,ref);
@@ -260,7 +262,9 @@ void BestPart<T>::query_file(const string& filename, const string& output){
     }
     uint64_t sum_query=0;
     for(uint i=0;i<bucket_number;i++) {
-        sum_query+=query_bucket(colored_kmer_per_bucket[i],result,i);
+        if(not colored_kmer_per_bucket[i].empty()){
+            sum_query+=query_bucket(colored_kmer_per_bucket[i],result,i);
+        }
     }
     for(uint i=0;i<result.size();i++) {
         {   
@@ -298,6 +302,7 @@ void BestPart<T>::load_super_kmer(vector<vector<pair<uint64_t,uint32_t> > >&colo
 template <class T>
 uint64_t BestPart<T>::query_bucket(vector<pair<uint64_t,uint32_t> >& colored_kmer,vector< pair<string,vector<uint32_t> > >& result, uint bucket_id){
     uint64_t sum(0);
+    cout<<bucket_id<<endl;
     buckets[bucket_id]->load(leaf_number,use_double_index);
     #pragma omp parallel
     {

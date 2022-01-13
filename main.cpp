@@ -21,7 +21,7 @@ using namespace filesystem;
 string fof(""), w_dir("My_index"), query_file(""),existing_index(""),query_output("output.gz");
 uint16_t nb_hash_func(1), bit_encoding(16);
 uint32_t kmer_size(31);
-uint32_t nb_partition(1);
+uint32_t nb_partition(4);
 uint64_t bf_size(134217728); 
 uint64_t core_number(0);
 bool use_double_index(false),filter_unique(false);
