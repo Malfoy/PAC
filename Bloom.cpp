@@ -14,7 +14,7 @@ using namespace filesystem;
 template <class T>
  Bloom<T>::Bloom(Best<T>* Ifather){
     father=Ifather;
-    BV=new bm::bvector<>(father->size,bm::BM_GAP);
+    BV=new bm::bvector<>(father->size+1,bm::BM_GAP);
     
 }
 
