@@ -1,6 +1,8 @@
 #ifndef EXPONENTIALBLOOMH
 #define EXPONENTIALBLOOMH
 
+
+
 #include <iostream>
 #include <vector>
 #include <math.h>
@@ -10,6 +12,8 @@
 
 
 using namespace std;
+
+
 
 template <class T>
 class ExponentialBloom{
@@ -30,7 +34,11 @@ public:
 };
 
 
+
 template class ExponentialBloom<uint8_t>;
 template class ExponentialBloom<uint16_t>;
 template class ExponentialBloom<uint32_t>;
+
+
+
 #endif

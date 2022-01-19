@@ -1,6 +1,8 @@
 #ifndef BESTH
 #define BESTH
 
+
+
 #include "Bloom.h"
 #include "ExponentialBloom.h"
 #include "utils.h"
@@ -16,8 +18,12 @@
 
 using namespace std;
 
+
+
 template <class T>
 class Bloom;
+
+
 
 template <class T>
 class Best{
@@ -28,10 +34,10 @@ public:
     ExponentialBloom<T>* trunk;
     ExponentialBloom<T>* reverse_trunk;
     uint K;
-    uint64_t offsetUpdatekmer;
     uint64_t size;
     uint number_hash_function;
     uint64_t number_bit_set;
+    uint64_t number_bit_set_abt;
     uint64_t disk_space_used;
     zstr::ofstream* out;
     bool write;
@@ -49,9 +55,7 @@ public:
         number_hash_function=Inumber_hash_function;
         trunk=NULL;
         reverse_trunk=NULL;
-        offsetUpdatekmer=1;
-        offsetUpdatekmer<<=2*K;
-        number_bit_set=disk_space_used=0;
+        number_bit_set_abt=number_bit_set=disk_space_used=0;
     }
 
 
@@ -87,7 +91,7 @@ public:
     vector<T> query_key(const uint64_t key);
     vector<uint> query_sequence(const string& reference);
     void construct_reverse_trunk();
-    void construct_trunk();
+    uint64_t construct_trunk();
     void get_stats()const;
     void serialize();
     void optimize();
@@ -96,6 +100,9 @@ public:
     void add_leaf();
     void free_ram();
     void load_bf(uint64_t leaf_number);
+    T query_key_max(const uint64_t key);
+    T query_key_min(const uint64_t key);
+
 };
 
 

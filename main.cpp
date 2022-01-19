@@ -23,7 +23,7 @@ uint16_t nb_hash_func(1), bit_encoding(16);
 uint32_t kmer_size(31);
 uint32_t nb_partition(4);
 uint64_t bf_size(134217728); 
-uint64_t core_number(0);
+uint64_t core_number(24);
 bool use_double_index(false),filter_unique(false);
 
 
@@ -136,21 +136,9 @@ void ProcessArgs(int argc, char** argv)
 
 
 
-
-
-
-
-
-
-
-
 int main(int argc, char **argv)
 {
     omp_set_nested(1);
-    if(core_number!=0){
-        omp_set_num_threads(1);
-    }
-
     
 	ProcessArgs(argc, argv);
 	if (argc < 2)
@@ -177,7 +165,7 @@ int main(int argc, char **argv)
         {
             case 8:
             {
-                BestPart<uint8_t> ever(existing_index);
+                BestPart<uint8_t> ever(existing_index,core_number);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
                 }
@@ -188,7 +176,7 @@ int main(int argc, char **argv)
             }
             case 16:
             {
-                BestPart<uint16_t> ever(existing_index);
+                BestPart<uint16_t> ever(existing_index,core_number);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
                 }
@@ -199,7 +187,7 @@ int main(int argc, char **argv)
             }
             case 32:
             {
-                BestPart<uint32_t> ever(existing_index);
+                BestPart<uint32_t> ever(existing_index,core_number);
                 if(fof!=""){
                     ever.insert_file_of_file(fof);
                 }
@@ -216,7 +204,7 @@ int main(int argc, char **argv)
         {
             case 8:
             {
-                BestPart<uint8_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition);
+                BestPart<uint8_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number);
                 ever.insert_file_of_file(fof);
                 ever.serialize();
                 if(query_file!=""){
@@ -226,7 +214,7 @@ int main(int argc, char **argv)
             }
             case 16:
             {
-                BestPart<uint16_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition);
+                BestPart<uint16_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number);
                 ever.insert_file_of_file(fof);
                 ever.serialize();
                 if(query_file!=""){
@@ -236,7 +224,7 @@ int main(int argc, char **argv)
             }
             case 32:
             {
-                BestPart<uint32_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition);
+                BestPart<uint32_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number);
                 ever.insert_file_of_file(fof);
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
@@ -249,7 +237,7 @@ int main(int argc, char **argv)
             }
         }
 		return 0;
-	}else 
+	}
 	
 	return 0;
 }

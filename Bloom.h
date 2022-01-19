@@ -16,8 +16,10 @@
 using namespace std;
 
 
+
 template <class T>
 class Best;
+
 
 
 template <class T>
@@ -40,8 +42,11 @@ public:
 };
 
 
+
 template class Bloom<uint8_t>;
 template class Bloom<uint16_t>;
 template class Bloom<uint32_t>;
+
+
 
 #endif

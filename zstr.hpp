@@ -23,7 +23,7 @@
 namespace zstr
 {
 
-static const std::size_t default_buff_size = static_cast<std::size_t>(1 << 20);
+static const std::size_t default_buff_size = static_cast<std::size_t>(1 << 16);
 
 /// Exception class thrown by failed zlib operations.
 class Exception
@@ -255,7 +255,7 @@ private:
     bool is_text;
     int window_bits;
 
-    static const std::size_t default_buff_size = static_cast<std::size_t>(1 << 20);
+    static const std::size_t default_buff_size = static_cast<std::size_t>(1 << 16);
 }; // class istreambuf
 
 class ostreambuf
@@ -355,7 +355,7 @@ private:
     bool failed = false;
 
 public:
-    static const std::size_t default_buff_size = static_cast<std::size_t>(1 << 20);
+    static const std::size_t default_buff_size = static_cast<std::size_t>(1 << 16);
 }; // class ostreambuf
 
 class istream

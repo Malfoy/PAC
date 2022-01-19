@@ -69,7 +69,6 @@ void BestPart<T>::insert_keys(const vector<uint64_t>& key,uint minimizer,uint le
 
 
 
-
 //TODO CAN BE IMPROVED
 template <class T>
 uint64_t BestPart<T>::rcb(uint64_t min, uint64_t n)const {
@@ -242,7 +241,7 @@ void BestPart<T>::query_file(const string& filename, const string& output){
     current_path(w_dir);
     vector< pair<string,vector<uint32_t> > > result;
     vector<vector<pair<uint64_t,uint32_t> > > colored_kmer_per_bucket(bucket_number);
-    #pragma omp parallel
+    #pragma omp parallel num_threads(core_number)
     {
         string ref,header; 
         uint32_t query_id;
@@ -299,48 +298,71 @@ void BestPart<T>::load_super_kmer(vector<vector<pair<uint64_t,uint32_t> > >&colo
 }
 
 
+
 template <class T>
-uint64_t BestPart<T>::query_bucket(vector<pair<uint64_t,uint32_t> >& colored_kmer,vector< pair<string,vector<uint32_t> > >& result, uint bucket_id){
+uint64_t BestPart<T>::query_bucket(vector<pair<uint64_t,uint32_t> >& colored_kmer, vector< pair<string,vector<uint32_t> > >& result, uint bucket_id){
+    cout<<'-'<<flush;
     uint64_t sum(0);
-    cout<<bucket_id<<endl;
     buckets[bucket_id]->load(leaf_number,use_double_index);
-    #pragma omp parallel
-    {
-        vector<T> colors;
-        #pragma omp for
+    vector<T> minV(colored_kmer.size(),0);
+    vector<T> maxV(colored_kmer.size(),leaf_number-1);
+    #pragma omp parallel for num_threads(core_number)
+    for(uint32_t i = 0; i < colored_kmer.size();++i){
+        minV[i]=buckets[bucket_id]->query_key_min(colored_kmer[i].first);
+    }
+    if(use_double_index){
+        maxV.resize(colored_kmer.size(),0);
+        #pragma omp parallel for num_threads(core_number)
         for(uint32_t i = 0; i < colored_kmer.size();++i){
-            colors=buckets[bucket_id]->query_key(colored_kmer[i].first);
-            #pragma omp atomic
-            sum++;
-            for(uint32_t j = 0; j <colors.size();++j){
+            maxV[i]=buckets[bucket_id]->query_key_max(colored_kmer[i].first);
+        }
+    }
+    
+    for(uint32_t l=(0);l<leaf_number;++l){
+    #pragma omp parallel for num_threads(core_number)
+        for(uint32_t i = 0; i < colored_kmer.size();++i){
+            if(l>=minV[i] and l<=maxV[i]){
                 #pragma omp atomic
-                result[colored_kmer[i].second].second[colors[j]]++;
+                sum++;
+                if(buckets[bucket_id]->leaf_filters[l]->check_key(colored_kmer[i].first)){
+                    #pragma omp atomic
+                    result[colored_kmer[i].second].second[l]++;
+                }
             }
         }
     }
-    buckets[bucket_id]->free_ram();
+    
+    delete buckets[bucket_id];
     return sum;
 }
 
 
 
-template <class T>
-vector<uint32_t> BestPart<T>::query_sequence(const string& reference){
-    vector<uint32_t> result(leaf_number,0);
-    auto V(get_super_kmers(reference));
-    vector<T> colors;
-    for(uint32_t i = 0; i < V.size();++i){
-        omp_set_lock(&mutex_array[V[i].second]);
-        colors=query_keys(V[i].first, V[i].second);
-        buckets[V[i].second]->free_ram();
-        omp_unset_lock(&mutex_array[V[i].second]);
-        for(uint32_t j = 0; j <colors.size();++j){
-            result[colors[j]]++;
-        }
-    }
-    
-    return result;
-}
+
+
+//~ template <class T>
+//~ uint64_t BestPart<T>::query_bucket(vector<pair<uint64_t,uint32_t> >& colored_kmer, vector< pair<string,vector<uint32_t> > >& result, uint bucket_id){
+
+    //~ uint64_t sum(0);
+    //~ cout<<bucket_id<<endl;
+    //~ buckets[bucket_id]->load(leaf_number,use_double_index);
+    //~ #pragma omp parallel num_threads(core_number)
+    //~ {
+        //~ vector<T> colors;
+        //~ #pragma omp for
+        //~ for(uint32_t i = 0; i < colored_kmer.size();++i){
+            //~ colors=buckets[bucket_id]->query_key(colored_kmer[i].first);
+            //~ #pragma omp atomic
+            //~ sum++;
+            //~ for(uint32_t j = 0; j <colors.size();++j){
+                //~ #pragma omp atomic
+                //~ result[colored_kmer[i].second].second[colors[j]]++;
+            //~ }
+        //~ }
+    //~ }
+    //~ delete buckets[bucket_id];
+    //~ return sum;
+//~ }
 
 
 
@@ -359,7 +381,7 @@ vector<T> BestPart<T>::query_keys(const vector<uint64_t>& key,uint minimizer){
 
 
 template <class T>
-void  BestPart<T>::insert_file(const string& filename, uint level){
+void  BestPart<T>::insert_file(const string& filename, uint level, uint32_t indice_bloom){
     char type=get_data_type(filename);
     zstr::ifstream in(filename);
     Bloom<T>* unique_filter;
@@ -385,7 +407,8 @@ void  BestPart<T>::insert_file(const string& filename, uint level){
 	bvs.gap_length_serialization(false);
     for(uint i=0;i<buckets.size();++i){
         buckets[i]->optimize(level);
-        omp_set_lock(&mutex_array[i]);
+        omp_set_lock(&mutex_array[i]);// TODO THE LOCK SHOULD NOT INCLUDE THE SERIALIZATION
+        buckets[i]->out->write(reinterpret_cast<const char*>(&indice_bloom), sizeof(indice_bloom));
         buckets[i]->dump(level,bvs);
         omp_unset_lock(&mutex_array[i]);
     }
@@ -402,27 +425,33 @@ void BestPart<T>::insert_file_of_file(const string& filename){
     zstr::ifstream in(vodka);
     cout<<"Insert file of file "<<filename<<endl;
     path initial_path=current_path();
+    for(uint i(0);i<core_number;++i){
+        add_leaf();
+    }
     
     auto  start = chrono::system_clock::now();;
-    #pragma omp parallel
+    #pragma omp parallel num_threads (core_number)
     {
         string ref;
         uint level;
         bool go;
+        int idt=omp_get_thread_num ();
+        //~ cout<<idt<<endl;
         while(not in.eof()) {
             #pragma omp critical (inputfile)
             {
                 getline(in,ref);
                 if(exists_test(ref)){
                     level=leaf_number;
-                    add_leaf();
+                    leaf_number++;
+                    //~ add_leaf();
                     go=true;
                 }else{
                     go=false;
                 }
             }
             if(go){
-                insert_file(ref,level);
+                insert_file(ref,idt,level);
                 if(level%100==0){
                     cout<<level<<" files"<<endl;
                 }
@@ -449,9 +478,6 @@ void BestPart<T>::insert_file_of_file(const string& filename){
 
 
 
-
-
-
 template <class T>
 void BestPart<T>::serialize()const{
     cout<<"Dump the index in "<<w_dir<<endl;
@@ -462,7 +488,6 @@ void BestPart<T>::serialize()const{
     }else{
         create_directory(p);
     }
-    uint64_t disk_space_used(0);
     current_path(p);
     string filename("MainIndex");
     filebuf fb;
@@ -476,11 +501,6 @@ void BestPart<T>::serialize()const{
     out.write(reinterpret_cast<const char*>(&large_minimizer_size), sizeof(large_minimizer_size));
     out.write(reinterpret_cast<const char*>(&leaf_number), sizeof(leaf_number));
     out.write(reinterpret_cast<const char*>(&use_double_index), sizeof(use_double_index));
-    //buckets
-    for(size_t i = 0; i <buckets.size(); ++i){
-        // buckets[i]->serialize();
-        disk_space_used+=buckets[i]->disk_space_used;
-    }
     out<<flush;
     fb.close();
     current_path(initial_path);
@@ -488,17 +508,27 @@ void BestPart<T>::serialize()const{
 }
 
 
+
 template <class T>
 void BestPart<T>::index(){
-    #pragma omp parallel for
+    #pragma omp parallel for num_threads(core_number)
     for(uint i=0;i<buckets.size();++i){
         buckets[i]->load_bf(leaf_number);
-        buckets[i]->construct_trunk();
+        uint64_t nbbs( buckets[i]->construct_trunk());
         if(use_double_index){
             buckets[i]->construct_reverse_trunk();
         }
+        #pragma omp atomic
+        number_bit_set+=nbbs;
         buckets[i]->serialize();
-        buckets[i]->free_ram();
+        nbbs=buckets[i]->disk_space_used;
+        #pragma omp atomic
+        disk_space_used+=nbbs;
+        nbbs=buckets[i]->number_bit_set_abt;
+        #pragma omp atomic
+        number_bit_set_abt+=nbbs;
+        delete buckets[i];
+        buckets[i]=NULL;
     }
 }
 
@@ -506,8 +536,7 @@ void BestPart<T>::index(){
 
 template <class T>
 void BestPart<T>::add_leaf(){
-    leaf_number++;
-    #pragma omp parallel for
+    //~ #pragma omp parallel for
     for(uint i=0;i<buckets.size();++i){
         buckets[i]->add_leaf();
     }
@@ -517,13 +546,11 @@ void BestPart<T>::add_leaf(){
 
 template <class T>
 uint64_t BestPart<T>::nb_bit_set()const{
-    uint64_t result(0);
-    for(uint i=0;i<buckets.size();++i){
-        result+=buckets[i]->number_bit_set;
-    }
-    cout<<intToString(result)<<" bits sets"<<endl;
-    cout<<(double)100*result/((double)leaf_number*size)<<"% of bits are set"<<endl;
-    return result;
+    cout<<intToString(number_bit_set)<<" bits sets"<<endl;
+    cout<<(double)100*number_bit_set/((double)leaf_number*size)<<"% of bits are set"<<endl;
+    cout<<intToString(number_bit_set_abt)<<" non empty cell in ABT"<<endl;
+    cout<<(double)100*number_bit_set_abt/(size)<<"% of cells are used"<<endl;
+    return number_bit_set;
 }
 
 

@@ -22,19 +22,20 @@ void Best<T>::construct_reverse_trunk(){
     reverse_trunk=new ExponentialBloom<T>(size,number_hash_function);
     uint64_t lfs(leaf_filters.size());
     for(int i = leaf_filters.size()-1; i>=0; i--){
-        insert_leaf_trunk(i,lfs-i,trunk);        
+        insert_leaf_trunk(i,lfs-i,reverse_trunk);        
     }
 }
 
 
 
 template <class T>
-void Best<T>::construct_trunk(){
+uint64_t Best<T>::construct_trunk(){
     trunk=new ExponentialBloom<T>(size,number_hash_function);
     uint64_t lfs(leaf_filters.size());
     for(uint i = 0; i<lfs; i++){
         insert_leaf_trunk(i,lfs-i,trunk);
     }
+    return number_bit_set;
 }
 
 
@@ -113,26 +114,6 @@ uint64_t Best<T>::rcb(uint64_t min)const {
 
 
 template <class T>
-void Best<T>::update_kmer(uint64_t& min, char nuc)const {
-  min<<=2;
-  min+=nuc2int(nuc);
-  min%=offsetUpdatekmer;
-}
-
-
-
-template <class T>
-void Best<T>::update_kmer_RC(uint64_t& min, char nuc)const {
-  min>>=2;
-  min+=(nuc2intrc(nuc)<<(2*K-2));
-}
-
-
-
-
-
-
-template <class T>
 void Best<T>::insert_leaf_trunk(uint level,uint indice,ExponentialBloom<T>* EB){
     Bloom<T>* leon(leaf_filters[level]);
     bm::bvector<>::enumerator en = leon->BV->first();
@@ -141,10 +122,36 @@ void Best<T>::insert_leaf_trunk(uint level,uint indice,ExponentialBloom<T>* EB){
     {
         if(EB->filter[*en]==0){
             EB->filter[*en]=indice;
+            number_bit_set_abt++;
         }
         ++en;  
         number_bit_set++;
     }
+}
+
+
+template <class T>
+T Best<T>::query_key_min(const uint64_t key){
+    T min_level=0;
+    if(trunk!=NULL){
+        min_level=leaf_filters.size()-trunk->check_key(key);
+    }
+    return min_level;
+}
+
+
+
+template <class T>
+T Best<T>::query_key_max(const uint64_t key){
+    T max_level=leaf_filters.size();
+    //~ cout<<"allo lola"<<endl;
+    if(reverse_trunk!=NULL){
+    //~ cout<<reverse_trunk->check_key(key)<<endl;
+        max_level=leaf_filters.size()-reverse_trunk->check_key(key);
+        //~ cout<<max_level<<endl;
+        //~ cin.get();
+    }
+    return max_level;
 }
 
 
@@ -155,8 +162,6 @@ vector<T> Best<T>::query_key(const uint64_t key){
     uint min_level=0;
     if(trunk!=NULL){
         min_level=leaf_filters.size()-trunk->check_key(key);
-        //~ cout<<(uint)trunk->check_key(key)<<" "<<min_level<<endl;
-        //~ cin.get();
     }
     uint max_level=leaf_filters.size();
     if(reverse_trunk!=NULL){
@@ -183,6 +188,7 @@ void Best<T>::serialize(){
         disk_space_used+=sizeof(T)*size;
     }
     out->flush();
+    //~ delete out;
 }
 
 
@@ -190,6 +196,10 @@ void Best<T>::serialize(){
 template <class T>
 void Best<T>::load_bf(uint64_t leaf_number){
     zstr::ifstream in(prefix);
+    leaf_filters.clear();//TODO CHECK MEMORY LEAK
+    for(uint i = 0; i < leaf_number; ++i){
+        leaf_filters.push_back(new Bloom<T>(this));
+    }
     for(uint i = 0; i < leaf_number; ++i){
         uint32_t indiceBloom;
         in.read(reinterpret_cast<char*>(&indiceBloom), sizeof(indiceBloom));
@@ -201,6 +211,7 @@ void Best<T>::load_bf(uint64_t leaf_number){
 
 template <class T>
 void Best<T>::load(uint64_t leaf_number, bool double_index ){
+    leaf_filters.clear();
     for(uint i = 0; i < leaf_number; ++i){
         leaf_filters.push_back(new Bloom<T>(this));
     }

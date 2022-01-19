@@ -14,11 +14,8 @@
 
 
 
-
 using namespace std;
 using namespace filesystem;
-
-
 
 
 
@@ -32,6 +29,10 @@ public:
     uint64_t offsetUpdateminimizer;
     uint64_t size;
     uint64_t leaf_number;
+    uint64_t core_number;
+    uint64_t number_bit_set;
+    uint64_t disk_space_used;
+    uint64_t number_bit_set_abt;
     uint number_hash_function;
     uint small_minimizer_size;
     uint large_minimizer_size;
@@ -43,7 +44,8 @@ public:
 
 
 
-    BestPart(const uint64_t Isize,const uint Inumber_hash_function,const uint Ik, bool Ifilter,const string Iwdir, bool Idouble,uint bucketing){
+    BestPart(const uint64_t Isize,const uint Inumber_hash_function,const uint Ik, bool Ifilter,const string Iwdir, bool Idouble,uint bucketing,uint Icore_number){
+        core_number=Icore_number;
         K=Ik;
         use_double_index=Idouble;
         w_dir=(Iwdir);
@@ -57,7 +59,7 @@ public:
         leaf_number=0;
         small_minimizer_size=bucketing;
         bucket_number=1<<(2*small_minimizer_size);
-        large_minimizer_size=small_minimizer_size+3;
+        large_minimizer_size=small_minimizer_size+2;
         large_minimizer_number=1<<(2*large_minimizer_size);
         size=Isize;
         number_hash_function=Inumber_hash_function;
@@ -71,11 +73,14 @@ public:
         offsetUpdatekmer<<=2*K;
         offsetUpdateminimizer=1;
         offsetUpdateminimizer<<=(2*large_minimizer_size);
+        disk_space_used=0;
+        number_bit_set_abt=0;
     }
 
 
 
-    BestPart(const string& existing_index){
+    BestPart(const string& existing_index,uint Icore){
+    core_number=Icore;
     cout<<"Loading "<<existing_index<<"..."<<endl;
     path initial_path=current_path();
     w_dir=existing_index;
@@ -122,10 +127,13 @@ public:
 
     ~BestPart(){
         for(uint32_t i=0;i<bucket_number;++i){
-            delete buckets[i];
+            if(buckets[i]!=NULL){
+                delete buckets[i];
+                }
         }
         delete [] mutex_array;
     }
+
 
 
     //LOW LEVEL FUNCTIONS
@@ -144,7 +152,7 @@ public:
     vector<pair<vector<uint64_t>,uint64_t> > get_super_kmers(const string& ref);
     //HIGH LEVEL FUNCTIONS
     void insert_sequence(const string& reference,uint level,Bloom<T>* unique_filter) ;
-    void insert_file(const string& filename,uint level);
+    void insert_file(const string& filename,uint level, uint32_t indice_bloom);
     void insert_file_of_file(const string& filename);
     vector<uint> query_key(const uint64_t key);
     vector<uint32_t> query_sequence(const string& reference);
@@ -162,8 +170,12 @@ public:
     uint64_t nb_insertions()const ;
 };
 
+
+
 template class BestPart<uint8_t>;
 template class BestPart<uint16_t>;
 template class BestPart<uint32_t>;
+
+
 
 #endif
