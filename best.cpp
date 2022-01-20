@@ -120,14 +120,15 @@ void Best<T>::insert_leaf_trunk(uint level,uint indice,ExponentialBloom<T>* EB){
     bm::bvector<>::enumerator en_end = leon->BV->end();
     while (en < en_end)
     {
-        if(EB->filter[*en]==0){
-            EB->filter[*en]=indice;
+        if((*(EB->filter))[*en]==0){
+            (*(EB->filter))[*en]=indice;
             number_bit_set_abt++;
         }
         ++en;  
         number_bit_set++;
     }
 }
+
 
 
 template <class T>
@@ -144,12 +145,8 @@ T Best<T>::query_key_min(const uint64_t key){
 template <class T>
 T Best<T>::query_key_max(const uint64_t key){
     T max_level=leaf_filters.size();
-    //~ cout<<"allo lola"<<endl;
     if(reverse_trunk!=NULL){
-    //~ cout<<reverse_trunk->check_key(key)<<endl;
         max_level=leaf_filters.size()-reverse_trunk->check_key(key);
-        //~ cout<<max_level<<endl;
-        //~ cin.get();
     }
     return max_level;
 }
@@ -179,16 +176,15 @@ vector<T> Best<T>::query_key(const uint64_t key){
 
 template <class T>
 void Best<T>::serialize(){
-    void* point = &(trunk->filter[0]);
+    void* point = trunk->filter->data();
     out->write((char*)point, sizeof(T)*size);
     disk_space_used+=sizeof(T)*size;
     if(reverse_trunk!=NULL){
-        void* point = &(reverse_trunk->filter[0]);
+        void* point = reverse_trunk->filter->data();
         out->write((char*)point, sizeof(T)*size);
         disk_space_used+=sizeof(T)*size;
     }
     out->flush();
-    //~ delete out;
 }
 
 
@@ -196,7 +192,7 @@ void Best<T>::serialize(){
 template <class T>
 void Best<T>::load_bf(uint64_t leaf_number){
     zstr::ifstream in(prefix);
-    leaf_filters.clear();//TODO CHECK MEMORY LEAK
+    leaf_filters.clear();
     for(uint i = 0; i < leaf_number; ++i){
         leaf_filters.push_back(new Bloom<T>(this));
     }
@@ -222,11 +218,11 @@ void Best<T>::load(uint64_t leaf_number, bool double_index ){
         leaf_filters[indiceBloom]->load_disk(&in);
     }
     trunk=new ExponentialBloom<T>(size,number_hash_function);
-    void* point = &(trunk->filter[0]);
+    void* point = (trunk->filter->data());
     in.read((char*)point, sizeof(T)*size);
     if(double_index){
         reverse_trunk=new ExponentialBloom<T>(size,number_hash_function);
-        void* point = &(reverse_trunk->filter[0]);
+        void* point = reverse_trunk->filter->data();
         in.read((char*)point, sizeof(T)*size);
     }
 }

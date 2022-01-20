@@ -80,48 +80,47 @@ public:
 
 
     BestPart(const string& existing_index,uint Icore){
-    core_number=Icore;
-    cout<<"Loading "<<existing_index<<"..."<<endl;
-    path initial_path=current_path();
-    w_dir=existing_index;
-    path p {existing_index};
-    if(exists(p)){
-        
-    }else{
-       cout<<"I cannot found you index sorry ..."<<endl;
-       return;
+        core_number=Icore;
+        cout<<"Loading "<<existing_index<<"..."<<endl;
+        path initial_path=current_path();
+        w_dir=existing_index;
+        path p {existing_index};
+        if(exists(p)){
+            
+        }else{
+           cout<<"I cannot found you index sorry ..."<<endl;
+           return;
+        }
+        current_path(p);
+        string filename("MainIndex");
+        zstr::ifstream in(filename);
+         // VARIOUS INTEGERS
+        in.read(reinterpret_cast< char*>(&K), sizeof(K));
+        in.read(reinterpret_cast< char*>(&size), sizeof(size));
+        in.read(reinterpret_cast< char*>(&number_hash_function), sizeof(number_hash_function));
+        in.read(reinterpret_cast< char*>(&small_minimizer_size), sizeof(small_minimizer_size));
+        in.read(reinterpret_cast< char*>(&large_minimizer_size), sizeof(large_minimizer_size));
+        in.read(reinterpret_cast< char*>(&leaf_number), sizeof(leaf_number));
+        in.read(reinterpret_cast< char*>(&use_double_index), sizeof(use_double_index));
+        bucket_number=1<<(2*small_minimizer_size);
+        large_minimizer_number=1<<(2*large_minimizer_size);
+        mutex_array=new omp_lock_t[bucket_number];
+        offsetUpdatekmer=1;
+        offsetUpdatekmer<<=2*K;
+        offsetUpdateminimizer=1;
+        offsetUpdateminimizer<<=(2*large_minimizer_size);
+        for(uint32_t i=0;i<bucket_number;++i){
+            omp_init_lock(&mutex_array[i]);
+        }
+        buckets.resize(bucket_number,NULL);
+        //buckets
+        for(size_t i = 0; i<bucket_number; ++i){
+            buckets[i]=new Best<T>(size/bucket_number,number_hash_function,K,existing_index+"/P"+to_string(i),false);
+            // buckets[i]->load(leaf_number,use_double_index);
+        }
+        current_path(initial_path);
+        cout<<"The index  use "<<K<<"mers with Bloom filters of size " <<intToString(size)<<" with "<<number_hash_function<<" hash functions  using "<<intToString(1<<(2*small_minimizer_size))<<" partitions "<<endl;
     }
-    current_path(p);
-    string filename("MainIndex");
-    zstr::ifstream in(filename);
-     // VARIOUS INTEGERS
-    in.read(reinterpret_cast< char*>(&K), sizeof(K));
-    in.read(reinterpret_cast< char*>(&size), sizeof(size));
-    in.read(reinterpret_cast< char*>(&number_hash_function), sizeof(number_hash_function));
-    in.read(reinterpret_cast< char*>(&small_minimizer_size), sizeof(small_minimizer_size));
-    in.read(reinterpret_cast< char*>(&large_minimizer_size), sizeof(large_minimizer_size));
-    in.read(reinterpret_cast< char*>(&leaf_number), sizeof(leaf_number));
-    in.read(reinterpret_cast< char*>(&use_double_index), sizeof(use_double_index));
-    bucket_number=1<<(2*small_minimizer_size);
-    large_minimizer_number=1<<(2*large_minimizer_size);
-    mutex_array=new omp_lock_t[bucket_number];
-    offsetUpdatekmer=1;
-    offsetUpdatekmer<<=2*K;
-    offsetUpdateminimizer=1;
-    offsetUpdateminimizer<<=(2*large_minimizer_size);
-    for(uint32_t i=0;i<bucket_number;++i){
-        omp_init_lock(&mutex_array[i]);
-    }
-    buckets.resize(bucket_number,NULL);
-    //buckets
-    for(size_t i = 0; i<bucket_number; ++i){
-        buckets[i]=new Best<T>(size/bucket_number,number_hash_function,K,existing_index+"/P"+to_string(i),false);
-        // buckets[i]->load(leaf_number,use_double_index);
-    }
-    current_path(initial_path);
-    cout<<"The index  use "<<K<<"mers with Bloom filters of size " <<intToString(size)<<" with "<<number_hash_function<<" hash functions  using "<<intToString(1<<(2*small_minimizer_size))<<" partitions "<<endl;
-
-}
 
 
 
@@ -129,7 +128,7 @@ public:
         for(uint32_t i=0;i<bucket_number;++i){
             if(buckets[i]!=NULL){
                 delete buckets[i];
-                }
+            }
         }
         delete [] mutex_array;
     }
@@ -157,7 +156,9 @@ public:
     vector<uint> query_key(const uint64_t key);
     vector<uint32_t> query_sequence(const string& reference);
     void load_super_kmer(vector<vector<pair<uint64_t,uint32_t> > >&colored_kmer_per_bucket,uint32_t query_id, const string& reference);
-    uint64_t query_bucket(vector<pair<uint64_t,uint32_t> >& colored_kmer,vector< pair<string,vector<uint32_t> > >& result, uint bucket_number);
+    uint64_t query_bucket(const vector<pair<uint64_t,uint32_t> >& colored_kmer,vector< pair<string,vector<uint32_t> > >& result, uint bucket_number);
+    uint64_t query_bucket2(const vector<pair<uint64_t,uint32_t> >& colored_kmer,vector< pair<string,vector<uint32_t> > >& result, uint bucket_number);
+
     void get_stats()const;
     void optimize();
     void query_file(const string& reference,const string& output);

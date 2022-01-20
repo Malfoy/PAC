@@ -50,7 +50,6 @@ uint64_t Bloom<T>::dump_disk(bm::serializer<bm::bvector<> >& bvs, zstr::ofstream
     buf         = sbuf.data();
     uint64_t sz = sbuf.size();
     auto point2 = &buf[0];
-    //~ out->write(reinterpret_cast<const char*>(&i), sizeof(i));
     out->write(reinterpret_cast<const char*>(&sz), sizeof(sz));
     out->write((char*)point2, sz);
     out->flush();
@@ -77,9 +76,6 @@ void Bloom<T>::load_disk(zstr::ifstream* in){
 
 template <class T>
 void Bloom<T>::free_ram(){
-    //~ delete BV;
-    //~ BV=NULL;
-    //~ BV=new bm::bvector<>(father->size+1,bm::BM_GAP);
     BV->reset();
 }
 

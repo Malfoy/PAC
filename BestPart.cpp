@@ -239,8 +239,8 @@ void BestPart<T>::query_file(const string& filename, const string& output){
     path old(current_path());
     vector<uint32_t> colors_count(leaf_number,0);
     current_path(w_dir);
-    vector< pair<string,vector<uint32_t> > > result;
-    vector<vector<pair<uint64_t,uint32_t> > > colored_kmer_per_bucket(bucket_number);
+    auto  result= new vector< pair<string,vector<uint32_t> > >;
+    auto colored_kmer_per_bucket= new vector<vector<pair<uint64_t,uint32_t> > > (bucket_number);
     #pragma omp parallel num_threads(core_number)
     {
         string ref,header; 
@@ -250,26 +250,30 @@ void BestPart<T>::query_file(const string& filename, const string& output){
             {
                 Biogetline(&in,ref,type,K,header);
                 if(ref.size()>K){
-                    result.push_back({header,colors_count});
-                    query_id=result.size()-1;
+                    result->push_back({header,colors_count});
+                    query_id=result->size()-1;
                 }
             }
             if(ref.size()>K) {
-                load_super_kmer(colored_kmer_per_bucket,query_id,ref);
+                load_super_kmer(*colored_kmer_per_bucket,query_id,ref);
             }
         }
     }
     uint64_t sum_query=0;
+    #pragma omp parallel for num_threads(core_number)
     for(uint i=0;i<bucket_number;i++) {
-        if(not colored_kmer_per_bucket[i].empty()){
-            sum_query+=query_bucket(colored_kmer_per_bucket[i],result,i);
+        if(not (*colored_kmer_per_bucket)[i].empty()){
+            uint64_t sq(query_bucket((*colored_kmer_per_bucket)[i],*result,i));
+            #pragma omp atomic
+            sum_query+=sq;
         }
     }
-    for(uint i=0;i<result.size();i++) {
+    
+    for(uint i=0;i<result->size();i++) {
         {   
-            out<<result[i].first<<"\n";
-            for(uint j=0;j<result[i].second.size();j++){
-                out<<result[i].second[j]<<' ';
+            out<<(*result)[i].first<<"\n";
+            for(uint j=0;j<(*result)[i].second.size();j++){
+                out<<(*result)[i].second[j]<<' ';
             }
             out<<"\n";
         }
@@ -279,7 +283,8 @@ void BestPart<T>::query_file(const string& filename, const string& output){
     chrono::duration<double> elapsed_seconds = end - start;
     cout <<  "Query time: " << elapsed_seconds.count() << "s for "<<intToString(sum_query)<<
     " kmer query or "<<intToString((double)sum_query/elapsed_seconds.count()) << " query per second  \n";
-
+    delete result;
+    delete colored_kmer_per_bucket;
     current_path(old);
 }
 
@@ -300,29 +305,31 @@ void BestPart<T>::load_super_kmer(vector<vector<pair<uint64_t,uint32_t> > >&colo
 
 
 template <class T>
-uint64_t BestPart<T>::query_bucket(vector<pair<uint64_t,uint32_t> >& colored_kmer, vector< pair<string,vector<uint32_t> > >& result, uint bucket_id){
-    cout<<'-'<<flush;
+uint64_t BestPart<T>::query_bucket(const vector<pair<uint64_t,uint32_t> >& colored_kmer, vector< pair<string,vector<uint32_t> > >& result, uint bucket_id){
     uint64_t sum(0);
     buckets[bucket_id]->load(leaf_number,use_double_index);
-    vector<T> minV(colored_kmer.size(),0);
-    vector<T> maxV(colored_kmer.size(),leaf_number-1);
-    #pragma omp parallel for num_threads(core_number)
+    vector<uint32_t> minV(colored_kmer.size(),0);
+    uint32_t minimal_value(leaf_number),maximal_value(leaf_number-1);
+    vector<uint32_t> maxV(colored_kmer.size(),leaf_number-1);
     for(uint32_t i = 0; i < colored_kmer.size();++i){
         minV[i]=buckets[bucket_id]->query_key_min(colored_kmer[i].first);
+        if(minV[i] < minimal_value){
+            minimal_value=minV[i];
+        }
     }
     if(use_double_index){
         maxV.resize(colored_kmer.size(),0);
-        #pragma omp parallel for num_threads(core_number)
+        maximal_value=0;
         for(uint32_t i = 0; i < colored_kmer.size();++i){
             maxV[i]=buckets[bucket_id]->query_key_max(colored_kmer[i].first);
+            if(maxV[i]>maximal_value){
+                maximal_value=maxV[i];
+            }
         }
     }
-    
-    for(uint32_t l=(0);l<leaf_number;++l){
-    #pragma omp parallel for num_threads(core_number)
+    for(uint32_t l=(minimal_value);l<maximal_value;++l){
         for(uint32_t i = 0; i < colored_kmer.size();++i){
             if(l>=minV[i] and l<=maxV[i]){
-                #pragma omp atomic
                 sum++;
                 if(buckets[bucket_id]->leaf_filters[l]->check_key(colored_kmer[i].first)){
                     #pragma omp atomic
@@ -331,38 +338,11 @@ uint64_t BestPart<T>::query_bucket(vector<pair<uint64_t,uint32_t> >& colored_kme
             }
         }
     }
-    
     delete buckets[bucket_id];
+    buckets[bucket_id]=NULL;
     return sum;
 }
 
-
-
-
-
-//~ template <class T>
-//~ uint64_t BestPart<T>::query_bucket(vector<pair<uint64_t,uint32_t> >& colored_kmer, vector< pair<string,vector<uint32_t> > >& result, uint bucket_id){
-
-    //~ uint64_t sum(0);
-    //~ cout<<bucket_id<<endl;
-    //~ buckets[bucket_id]->load(leaf_number,use_double_index);
-    //~ #pragma omp parallel num_threads(core_number)
-    //~ {
-        //~ vector<T> colors;
-        //~ #pragma omp for
-        //~ for(uint32_t i = 0; i < colored_kmer.size();++i){
-            //~ colors=buckets[bucket_id]->query_key(colored_kmer[i].first);
-            //~ #pragma omp atomic
-            //~ sum++;
-            //~ for(uint32_t j = 0; j <colors.size();++j){
-                //~ #pragma omp atomic
-                //~ result[colored_kmer[i].second].second[colors[j]]++;
-            //~ }
-        //~ }
-    //~ }
-    //~ delete buckets[bucket_id];
-    //~ return sum;
-//~ }
 
 
 

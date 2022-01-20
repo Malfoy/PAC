@@ -73,6 +73,7 @@ public:
     }
 
 
+
     //LOW LEVEL FUNCTIONS
     void insert_key(const uint64_t key,uint level);
     void change_level();
@@ -102,7 +103,6 @@ public:
     void load_bf(uint64_t leaf_number);
     T query_key_max(const uint64_t key);
     T query_key_min(const uint64_t key);
-
 };
 
 
