@@ -39,6 +39,7 @@ public:
     uint64_t number_bit_set;
     uint64_t number_bit_set_abt;
     uint64_t disk_space_used;
+    uint64_t leaf_number;
     zstr::ofstream* out;
     bool write;
 
@@ -101,6 +102,7 @@ public:
     void add_leaf();
     void free_ram();
     void load_bf(uint64_t leaf_number);
+    void load(uint64_t leaf_number, bool double_index, vector<bool>* BBV);
     T query_key_max(const uint64_t key);
     T query_key_min(const uint64_t key);
 };

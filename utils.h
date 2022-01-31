@@ -42,7 +42,7 @@ uint64_t hash64shift(uint64_t key) ;
 
 
 
-uint64_t hash_family(uint64_t& key,uint b);
+uint64_t hash_family(uint64_t key,uint b);
 
 
 

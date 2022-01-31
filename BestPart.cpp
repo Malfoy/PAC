@@ -260,15 +260,20 @@ void BestPart<T>::query_file(const string& filename, const string& output){
         }
     }
     uint64_t sum_query=0;
-    #pragma omp parallel for num_threads(core_number)
-    for(uint i=0;i<bucket_number;i++) {
-        if(not (*colored_kmer_per_bucket)[i].empty()){
-            uint64_t sq(query_bucket((*colored_kmer_per_bucket)[i],*result,i));
-            #pragma omp atomic
-            sum_query+=sq;
+    #pragma omp parallel num_threads(core_number)
+    {
+        vector<bool>* BBV=new vector<bool>(leaf_number*size/bucket_number,false);
+        #pragma omp for 
+        for(uint i=0;i<bucket_number;i++) {
+            if(not (*colored_kmer_per_bucket)[i].empty()){
+                uint64_t sq(query_bucket((*colored_kmer_per_bucket)[i],*result,i,BBV));
+                #pragma omp atomic
+                sum_query+=sq;
+            }
         }
+        delete BBV;
     }
-    
+    cout<<"query done"<<endl;
     for(uint i=0;i<result->size();i++) {
         {   
             out<<(*result)[i].first<<"\n";
@@ -305,7 +310,7 @@ void BestPart<T>::load_super_kmer(vector<vector<pair<uint64_t,uint32_t> > >&colo
 
 
 template <class T>
-uint64_t BestPart<T>::query_bucket(const vector<pair<uint64_t,uint32_t> >& colored_kmer, vector< pair<string,vector<uint32_t> > >& result, uint bucket_id){
+uint64_t BestPart<T>::query_bucket2(const vector<pair<uint64_t,uint32_t> >& colored_kmer, vector< pair<string,vector<uint32_t> > >& result, uint bucket_id){
     uint64_t sum(0);
     buckets[bucket_id]->load(leaf_number,use_double_index);
     vector<uint32_t> minV(colored_kmer.size(),0);
@@ -327,6 +332,7 @@ uint64_t BestPart<T>::query_bucket(const vector<pair<uint64_t,uint32_t> >& color
             }
         }
     }
+ 
     for(uint32_t l=(minimal_value);l<maximal_value;++l){
         for(uint32_t i = 0; i < colored_kmer.size();++i){
             if(l>=minV[i] and l<=maxV[i]){
@@ -338,6 +344,56 @@ uint64_t BestPart<T>::query_bucket(const vector<pair<uint64_t,uint32_t> >& color
             }
         }
     }
+    //~ cout<<"end read BBv"<<endl;
+    delete buckets[bucket_id];
+    buckets[bucket_id]=NULL;
+    return sum;
+}
+
+
+
+template <class T>
+uint64_t BestPart<T>::query_bucket(const vector<pair<uint64_t,uint32_t> >& colored_kmer, vector< pair<string,vector<uint32_t> > >& result, uint bucket_id,vector<bool>* BBV){
+    uint64_t sum(0);
+    uint64_t size_partition=size/bucket_number;
+    buckets[bucket_id]->load(leaf_number,use_double_index,BBV);
+    buckets[bucket_id]->leaf_number=leaf_number;
+    //~ vector<uint32_t> minV(colored_kmer.size(),0);
+    //~ uint32_t minimal_value(leaf_number),maximal_value(leaf_number-1);
+    //~ vector<uint32_t> maxV(colored_kmer.size(),leaf_number-1);
+    //~ for(uint32_t i = 0; i < colored_kmer.size();++i){
+        //~ minV[i]=buckets[bucket_id]->query_key_min(colored_kmer[i].first);
+        //~ if(minV[i] < minimal_value){
+            //~ minimal_value=minV[i];
+        //~ }
+    //~ }
+    //~ if(use_double_index){
+        //~ maxV.resize(colored_kmer.size(),0);
+        //~ maximal_value=0;
+        //~ for(uint32_t i = 0; i < colored_kmer.size();++i){
+            //~ maxV[i]=buckets[bucket_id]->query_key_max(colored_kmer[i].first);
+            //~ if(maxV[i]>maximal_value){
+                //~ maximal_value=maxV[i];
+            //~ }
+        //~ }
+    //~ }
+    uint64_t mask(size_partition-1);
+    for(uint32_t i = 0; i < colored_kmer.size();++i){
+        uint64_t min_local(leaf_number-1),max_local(leaf_number-1);
+        min_local=buckets[bucket_id]->query_key_min(colored_kmer[i].first);
+        if(use_double_index){
+            max_local=buckets[bucket_id]->query_key_max(colored_kmer[i].first);
+        }
+        uint64_t hash((hash_family(colored_kmer[i].first,0) & mask)*leaf_number);
+        
+        for(uint64_t l=min_local+hash ;l<=max_local+hash;++l){
+        sum++;
+            if((*BBV)[l]){
+                result[colored_kmer[i].second].second[l-hash]++;
+            }
+        }
+    }
+    BBV->clear();
     delete buckets[bucket_id];
     buckets[bucket_id]=NULL;
     return sum;

@@ -135,7 +135,7 @@ template <class T>
 T Best<T>::query_key_min(const uint64_t key){
     T min_level=0;
     if(trunk!=NULL){
-        min_level=leaf_filters.size()-trunk->check_key(key);
+        min_level=leaf_number-trunk->check_key(key);
     }
     return min_level;
 }
@@ -144,9 +144,9 @@ T Best<T>::query_key_min(const uint64_t key){
 
 template <class T>
 T Best<T>::query_key_max(const uint64_t key){
-    T max_level=leaf_filters.size();
+    T max_level=leaf_number;
     if(reverse_trunk!=NULL){
-        max_level=leaf_filters.size()-reverse_trunk->check_key(key);
+        max_level=leaf_number-reverse_trunk->check_key(key);
     }
     return max_level;
 }
@@ -158,9 +158,9 @@ vector<T> Best<T>::query_key(const uint64_t key){
     vector<T> result;
     uint min_level=0;
     if(trunk!=NULL){
-        min_level=leaf_filters.size()-trunk->check_key(key);
+        min_level=leaf_number-trunk->check_key(key);
     }
-    uint max_level=leaf_filters.size();
+    uint max_level=leaf_number;
     if(reverse_trunk!=NULL){
         max_level=reverse_trunk->check_key(key);
     }
@@ -217,6 +217,38 @@ void Best<T>::load(uint64_t leaf_number, bool double_index ){
         in.read(reinterpret_cast<char*>(&indiceBloom), sizeof(indiceBloom));
         leaf_filters[indiceBloom]->load_disk(&in);
     }
+    trunk=new ExponentialBloom<T>(size,number_hash_function);
+    void* point = (trunk->filter->data());
+    in.read((char*)point, sizeof(T)*size);
+    if(double_index){
+        reverse_trunk=new ExponentialBloom<T>(size,number_hash_function);
+        void* point = reverse_trunk->filter->data();
+        in.read((char*)point, sizeof(T)*size);
+    }
+}
+
+
+
+template <class T>
+void Best<T>::load(uint64_t leaf_number, bool double_index, vector<bool>* BBV ){
+    leaf_filters.clear();
+    Bloom<T>* leon(new Bloom<T>(this));
+    zstr::ifstream in(prefix);
+    bm::bvector<>::enumerator en;
+    bm::bvector<>::enumerator en_end;
+    for(uint i = 0; i < leaf_number; ++i){
+        uint32_t indiceBloom;
+        in.read(reinterpret_cast<char*>(&indiceBloom), sizeof(indiceBloom));
+        leon->load_disk(&in);
+        en = leon->BV->first();
+        en_end = leon->BV->end();
+        while (en < en_end){
+            (*BBV)[(*en)*leaf_number+indiceBloom]=true;
+            ++en;  
+        }
+        leon->BV->clear();
+    }
+    delete leon;
     trunk=new ExponentialBloom<T>(size,number_hash_function);
     void* point = (trunk->filter->data());
     in.read((char*)point, sizeof(T)*size);

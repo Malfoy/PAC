@@ -59,7 +59,7 @@ public:
         leaf_number=0;
         small_minimizer_size=bucketing;
         bucket_number=1<<(2*small_minimizer_size);
-        large_minimizer_size=small_minimizer_size+2;
+        large_minimizer_size=small_minimizer_size+3;
         large_minimizer_number=1<<(2*large_minimizer_size);
         size=Isize;
         number_hash_function=Inumber_hash_function;
@@ -157,6 +157,7 @@ public:
     vector<uint32_t> query_sequence(const string& reference);
     void load_super_kmer(vector<vector<pair<uint64_t,uint32_t> > >&colored_kmer_per_bucket,uint32_t query_id, const string& reference);
     uint64_t query_bucket(const vector<pair<uint64_t,uint32_t> >& colored_kmer,vector< pair<string,vector<uint32_t> > >& result, uint bucket_number);
+    uint64_t query_bucket(const vector<pair<uint64_t,uint32_t> >& colored_kmer,vector< pair<string,vector<uint32_t> > >& result, uint bucket_number,vector<bool>* bouly);
     uint64_t query_bucket2(const vector<pair<uint64_t,uint32_t> >& colored_kmer,vector< pair<string,vector<uint32_t> > >& result, uint bucket_number);
 
     void get_stats()const;

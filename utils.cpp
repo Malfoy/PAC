@@ -109,7 +109,7 @@ uint64_t getMemorySelfMaxUsed (){
 
 
 
-uint64_t hash_family(uint64_t& key,uint b){
+uint64_t hash_family(uint64_t key,uint b){
     return hash64shift(key) + xorshift64(key)*b;
 }
 
