@@ -296,6 +296,38 @@ void BestPart<T>::query_file(const string& filename, const string& output){
 
 
 template <class T>
+void  BestPart<T>::insert_previous_index(const string& filename){
+    zstr::ifstream in(filename+"/MainIndex");
+    uint64_t osef,leaf_number_to_insert;
+    in.read(reinterpret_cast< char*>(&osef), sizeof(K));
+    in.read(reinterpret_cast< char*>(&osef), sizeof(size));
+    in.read(reinterpret_cast< char*>(&osef), sizeof(number_hash_function));
+    in.read(reinterpret_cast< char*>(&osef), sizeof(small_minimizer_size));
+    in.read(reinterpret_cast< char*>(&osef), sizeof(large_minimizer_size));
+    in.read(reinterpret_cast< char*>(&leaf_number_to_insert), sizeof(leaf_number_to_insert));
+    for(uint i=0;i<buckets.size();++i){
+        zstr::ifstream in(filename+"/P"+to_string(i));
+        for(uint ii=0;ii<leaf_number_to_insert;++ii){
+            uint32_t ibloom;
+            in.read(reinterpret_cast<char*>(&ibloom), sizeof(ibloom));
+            uint64_t sz;
+            in.read(reinterpret_cast<char*>(&sz), sizeof(sz));
+            uint8_t* buff = new uint8_t[sz];
+            in.read((char*)buff, sz);
+            buckets[i]->out->write(reinterpret_cast<const char*>(&ibloom), sizeof(ibloom));
+            buckets[i]->out->write(reinterpret_cast<const char*>(&sz), sizeof(sz));
+            buckets[i]->out->write((char*)&buff[0], sz);
+        }
+        buckets[i]->out->flush();
+    }
+    leaf_number+=leaf_number_to_insert;
+    cout<<leaf_number<<" datasets loaded from previous index"<<endl;
+}
+
+
+
+
+template <class T>
 void BestPart<T>::load_super_kmer(vector<vector<pair<uint64_t,uint32_t> > >&colored_kmer_per_bucket,uint32_t query_id, const string& reference){
     auto V(get_super_kmers(reference));
     for(uint32_t i = 0; i < V.size();++i){
@@ -472,7 +504,6 @@ void BestPart<T>::insert_file_of_file(const string& filename){
         uint level;
         bool go;
         int idt=omp_get_thread_num ();
-        //~ cout<<idt<<endl;
         while(not in.eof()) {
             #pragma omp critical (inputfile)
             {
@@ -480,7 +511,6 @@ void BestPart<T>::insert_file_of_file(const string& filename){
                 if(exists_test(ref)){
                     level=leaf_number;
                     leaf_number++;
-                    //~ add_leaf();
                     go=true;
                 }else{
                     go=false;

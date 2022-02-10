@@ -159,6 +159,7 @@ public:
     uint64_t query_bucket(const vector<pair<uint64_t,uint32_t> >& colored_kmer,vector< pair<string,vector<uint32_t> > >& result, uint bucket_number);
     uint64_t query_bucket(const vector<pair<uint64_t,uint32_t> >& colored_kmer,vector< pair<string,vector<uint32_t> > >& result, uint bucket_number,vector<bool>* bouly);
     uint64_t query_bucket2(const vector<pair<uint64_t,uint32_t> >& colored_kmer,vector< pair<string,vector<uint32_t> > >& result, uint bucket_number);
+    void  insert_previous_index(const string& filename);
 
     void get_stats()const;
     void optimize();

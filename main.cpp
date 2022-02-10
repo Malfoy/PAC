@@ -31,7 +31,7 @@ bool use_double_index(false),filter_unique(false);
 void PrintHelp()
 {
 	cout <<
-			"\n******************* ABC **************************************\n"
+			"\n******************* PAC **************************************\n"
 
 
 			"\n INDEX CONSTRUCTION\n"
@@ -165,34 +165,46 @@ int main(int argc, char **argv)
         {
             case 8:
             {
-                BestPart<uint8_t> ever(existing_index,core_number);
                 if(fof!=""){
+                    BestPart<uint8_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number);
+                    ever.insert_previous_index(existing_index);
                     ever.insert_file_of_file(fof);
-                }
-                if(query_file!=""){
-                    ever.query_file(query_file,query_output);
+                }else{
+                    BestPart<uint8_t> ever(existing_index,core_number);
+                    
+                    if(query_file!=""){
+                        ever.query_file(query_file,query_output);
+                    }
                 }
                 break;
             }
             case 16:
             {
-                BestPart<uint16_t> ever(existing_index,core_number);
                 if(fof!=""){
+                    BestPart<uint16_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number);
+                    ever.insert_previous_index(existing_index);
                     ever.insert_file_of_file(fof);
-                }
-                if(query_file!=""){
-                    ever.query_file(query_file,query_output);
+                }else{
+                    BestPart<uint16_t> ever(existing_index,core_number);
+                    
+                    if(query_file!=""){
+                        ever.query_file(query_file,query_output);
+                    }
                 }
                 break;
             }
             case 32:
             {
-                BestPart<uint32_t> ever(existing_index,core_number);
                 if(fof!=""){
+                    BestPart<uint32_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number);
+                    ever.insert_previous_index(existing_index);
                     ever.insert_file_of_file(fof);
-                }
-                if(query_file!=""){
-                    ever.query_file(query_file,query_output);
+                }else{
+                    BestPart<uint32_t> ever(existing_index,core_number);
+                    
+                    if(query_file!=""){
+                        ever.query_file(query_file,query_output);
+                    }
                 }
                 break;
             }
