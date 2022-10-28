@@ -177,6 +177,7 @@ vector<pair<vector<uint64_t>,uint64_t> > BestPart<T>::get_super_kmers(const stri
     old_minimizer     = minimizer;
     uint64_t hash_min = unrevhash(minimizer);
     uint64_t i(0);
+    superkmer.push_back(canon);
     for (; i + K < ref.size(); ++i) {
         updateK(seq, ref[i + K]);
         updateRCK(rcseq, ref[i + K]);
@@ -260,7 +261,7 @@ void BestPart<T>::query_file(const string& filename, const string& output){
         }
     }
     uint64_t sum_query=0;
-    #pragma omp parallel num_threads(core_number)
+    // #pragma omp parallel num_threads(core_number)
     {
         vector<bool>* BBV=new vector<bool>(leaf_number*size/bucket_number,false);
         #pragma omp for 
@@ -387,29 +388,14 @@ uint64_t BestPart<T>::query_bucket2(const vector<pair<uint64_t,uint32_t> >& colo
 template <class T>
 uint64_t BestPart<T>::query_bucket(const vector<pair<uint64_t,uint32_t> >& colored_kmer, vector< pair<string,vector<uint32_t> > >& result, uint bucket_id,vector<bool>* BBV){
     uint64_t sum(0);
+    cout<<"query_bucket"<<endl;
     uint64_t size_partition=size/bucket_number;
+    cout<<"???"<<endl;
+    cout<<buckets.size()<<" "<<bucket_id<<endl;
     buckets[bucket_id]->load(leaf_number,use_double_index,BBV);
     buckets[bucket_id]->leaf_number=leaf_number;
-    //~ vector<uint32_t> minV(colored_kmer.size(),0);
-    //~ uint32_t minimal_value(leaf_number),maximal_value(leaf_number-1);
-    //~ vector<uint32_t> maxV(colored_kmer.size(),leaf_number-1);
-    //~ for(uint32_t i = 0; i < colored_kmer.size();++i){
-        //~ minV[i]=buckets[bucket_id]->query_key_min(colored_kmer[i].first);
-        //~ if(minV[i] < minimal_value){
-            //~ minimal_value=minV[i];
-        //~ }
-    //~ }
-    //~ if(use_double_index){
-        //~ maxV.resize(colored_kmer.size(),0);
-        //~ maximal_value=0;
-        //~ for(uint32_t i = 0; i < colored_kmer.size();++i){
-            //~ maxV[i]=buckets[bucket_id]->query_key_max(colored_kmer[i].first);
-            //~ if(maxV[i]>maximal_value){
-                //~ maximal_value=maxV[i];
-            //~ }
-        //~ }
-    //~ }
     uint64_t mask(size_partition-1);
+     cout<<"query_bucket LOAD"<<endl;
     for(uint32_t i = 0; i < colored_kmer.size();++i){
         uint64_t min_local(leaf_number-1),max_local(leaf_number-1);
         min_local=buckets[bucket_id]->query_key_min(colored_kmer[i].first);
@@ -417,7 +403,7 @@ uint64_t BestPart<T>::query_bucket(const vector<pair<uint64_t,uint32_t> >& color
             max_local=buckets[bucket_id]->query_key_max(colored_kmer[i].first);
         }
         uint64_t hash((hash_family(colored_kmer[i].first,0) & mask)*leaf_number);
-        
+        cout<<min_local<<endl;
         for(uint64_t l=min_local+hash ;l<=max_local+hash;++l){
         sum++;
             if((*BBV)[l]){
@@ -470,12 +456,20 @@ void  BestPart<T>::insert_file(const string& filename, uint level, uint32_t indi
     if(filter){
         delete unique_filter;
     }
+    
+    for(uint i=0;i<buckets.size();++i){
+        buckets[i]->insert_leaf_trunk_min(level,buckets[i]->trunk);
+        if(use_double_index){
+            buckets[i]->insert_leaf_trunk_max(level,buckets[i]->trunk);
+        }
+    }
+
     bm::serializer<bm::bvector<> > bvs;
 	bvs.byte_order_serialization(false);
 	bvs.gap_length_serialization(false);
     for(uint i=0;i<buckets.size();++i){
         buckets[i]->optimize(level);
-        omp_set_lock(&mutex_array[i]);// TODO THE LOCK SHOULD NOT INCLUDE THE SERIALIZATION
+        omp_set_lock(&mutex_array[i]);//TODO THE LOCK SHOULD NOT INCLUDE THE SERIALIZATION
         buckets[i]->out->write(reinterpret_cast<const char*>(&indice_bloom), sizeof(indice_bloom));
         buckets[i]->dump(level,bvs);
         omp_unset_lock(&mutex_array[i]);
@@ -518,7 +512,7 @@ void BestPart<T>::insert_file_of_file(const string& filename){
             }
             if(go){
                 insert_file(ref,idt,level);
-                if(level%100==0){
+                if(level%1000==0){
                     cout<<level<<" files"<<endl;
                 }
             }
@@ -528,17 +522,13 @@ void BestPart<T>::insert_file_of_file(const string& filename){
     chrono::duration<double> elapsed_seconds = middle - start;
     cout <<  "Bloom construction time: " << elapsed_seconds.count() << "s\n";
     cout<<intToString(getMemorySelfMaxUsed())<<" KB total"<<endl;
-    cout<<intToString(getMemorySelfMaxUsed()/(leaf_number))<<" KB per file ("<<leaf_number<<" files)"<<endl;
     index();
-    nb_bit_set();
     auto  end = chrono::system_clock::now();
     elapsed_seconds = end - middle;
     cout <<  "Exponential Bloom construction time: " << elapsed_seconds.count() << "s\n";
     elapsed_seconds = end - start;
     cout <<  "Total Index time: " << elapsed_seconds.count() << "s\n";
-    cout <<  "Index time per file: " << elapsed_seconds.count()/leaf_number << "s\n";
     cout<<intToString(getMemorySelfMaxUsed())<<" kB total"<<endl;
-    cout<<intToString(getMemorySelfMaxUsed()/(leaf_number))<<" kB per file"<<endl;
     current_path(old);
 }
 
@@ -577,17 +567,16 @@ void BestPart<T>::serialize()const{
 
 template <class T>
 void BestPart<T>::index(){
+    cout<<"GO INDEX"<<endl;
     #pragma omp parallel for num_threads(core_number)
     for(uint i=0;i<buckets.size();++i){
-        buckets[i]->load_bf(leaf_number);
-        uint64_t nbbs( buckets[i]->construct_trunk());
-        if(use_double_index){
-            buckets[i]->construct_reverse_trunk();
-        }
-        #pragma omp atomic
-        number_bit_set+=nbbs;
+        // buckets[i]->load_bf(leaf_number);
+        // uint64_t nbbs( buckets[i]->construct_trunk());
+        // if(use_double_index){
+        //     buckets[i]->construct_reverse_trunk();
+        // }
         buckets[i]->serialize();
-        nbbs=buckets[i]->disk_space_used;
+        uint64_t nbbs=buckets[i]->disk_space_used;
         #pragma omp atomic
         disk_space_used+=nbbs;
         nbbs=buckets[i]->number_bit_set_abt;

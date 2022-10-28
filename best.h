@@ -45,7 +45,7 @@ public:
 
 
 
-    Best(const uint64_t Isize,const uint Inumber_hash_function,const uint Ik,const string Iprefix, bool Iwrite=true){
+    Best(const uint64_t Isize,const uint Inumber_hash_function,const uint Ik,const string Iprefix,bool doubleindex, bool Iwrite=true){
         K=Ik;
         prefix=Iprefix;
         write=Iwrite;
@@ -54,9 +54,12 @@ public:
         }
         size=Isize-1;
         number_hash_function=Inumber_hash_function;
-        trunk=NULL;
         reverse_trunk=NULL;
         number_bit_set_abt=number_bit_set=disk_space_used=0;
+        trunk=new ExponentialBloom<T>(size,number_hash_function);
+        if(doubleindex){
+            reverse_trunk=new ExponentialBloom<T>(size,number_hash_function);
+        }
     }
 
 
@@ -83,7 +86,9 @@ public:
     void update_kmer(uint64_t& min, char nuc)const;
     void update_kmer_RC(uint64_t& min, char nuc)const;
     void insert_last_leaf_trunk(uint level,ExponentialBloom<T>* EB);
-    void insert_leaf_trunk(uint indice,uint level,ExponentialBloom<T>* EB);
+    // void insert_leaf_trunk(uint indice,uint level,ExponentialBloom<T>* EB);
+    void insert_leaf_trunk_max(uint level,ExponentialBloom<T>* EB);
+    void insert_leaf_trunk_min(uint level,ExponentialBloom<T>* EB);
     void load(uint64_t leaf_number,bool double_index);
 
     //HIGH LEVEL FUNCTIONS

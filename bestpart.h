@@ -66,7 +66,7 @@ public:
         buckets.resize(bucket_number,NULL);
         mutex_array=new omp_lock_t[bucket_number];
         for(uint32_t i=0;i<bucket_number;++i){
-            buckets[i]=new Best<T>(size/bucket_number,number_hash_function,K,w_dir+"/P"+to_string(i));
+            buckets[i]=new Best<T>(size/bucket_number,number_hash_function,K,w_dir+"/P"+to_string(i),use_double_index);
             omp_init_lock(&mutex_array[i]);
         }
         offsetUpdatekmer=1;
@@ -115,7 +115,7 @@ public:
         buckets.resize(bucket_number,NULL);
         //buckets
         for(size_t i = 0; i<bucket_number; ++i){
-            buckets[i]=new Best<T>(size/bucket_number,number_hash_function,K,existing_index+"/P"+to_string(i),false);
+            buckets[i]=new Best<T>(size/bucket_number,number_hash_function,K,existing_index+"/P"+to_string(i),use_double_index,false);
             // buckets[i]->load(leaf_number,use_double_index);
         }
         current_path(initial_path);
