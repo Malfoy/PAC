@@ -17,31 +17,6 @@ using namespace filesystem;
 
 
 
-// template <class T>
-// void Best<T>::construct_reverse_trunk(){
-//     reverse_trunk=new ExponentialBloom<T>(size,number_hash_function);
-//     uint64_t lfs(leaf_filters.size());
-//     #pragma omp parallel for
-//     for(int i = leaf_filters.size()-1; i>=0; i--){
-//         insert_leaf_trunk(i,lfs-i,reverse_trunk);        
-//     }
-// }
-
-
-
-// template <class T>
-// uint64_t Best<T>::construct_trunk(){
-//     trunk=new ExponentialBloom<T>(size,number_hash_function);
-//     uint64_t lfs(leaf_filters.size());
-//     #pragma omp parallel for
-//     for(uint i = 0; i<lfs; i++){
-//         insert_leaf_trunk(i,lfs-i,trunk);
-//     }
-//     return number_bit_set;
-// }
-
-
-
 template <class T>
 void Best<T>::insert_key(const uint64_t key,uint level){
     leaf_filters[level]->insert_key(key);
@@ -115,32 +90,17 @@ uint64_t Best<T>::rcb(uint64_t min)const {
 
 
 
-// template <class T>
-// void Best<T>::insert_leaf_trunk(uint level,uint indice,ExponentialBloom<T>* EB){
-//     Bloom<T>* leon(leaf_filters[level]);
-//     bm::bvector<>::enumerator en = leon->BV->first();
-//     bm::bvector<>::enumerator en_end = leon->BV->end();
-//     while (en < en_end){
-//         if((*(EB->filter))[*en]==0){
-//             (*(EB->filter))[*en]=indice;
-//             number_bit_set_abt++;
-//         }
-//         ++en;  
-//         number_bit_set++;
-//     }
-// }
-
 template <class T>
-void Best<T>::insert_leaf_trunk_min(uint level,ExponentialBloom<T>* EB){
+void Best<T>::insert_leaf_trunk(uint level,ExponentialBloom<T>* EB, uint indicebloom){
     Bloom<T>* leon(leaf_filters[level]);
     bm::bvector<>::enumerator en = leon->BV->first();
     bm::bvector<>::enumerator en_end = leon->BV->end();
     while (en < en_end){
         if((*(EB->filter))[*en]==0){
-            (*(EB->filter))[*en]=level;
+            (*(EB->filter))[*en]=indicebloom+1;
             number_bit_set_abt++;
-        }else if((*(EB->filter))[*en]>level){
-            (*(EB->filter))[*en]=level;
+        }else if((*(EB->filter))[*en]>(indicebloom+1)){
+            (*(EB->filter))[*en]=indicebloom+1;
         }
         ++en;  
         number_bit_set++;
@@ -150,16 +110,22 @@ void Best<T>::insert_leaf_trunk_min(uint level,ExponentialBloom<T>* EB){
 
 
 template <class T>
-void Best<T>::insert_leaf_trunk_max(uint level,ExponentialBloom<T>* EB){
+void Best<T>::insert_leaf_trunk(uint level, ExponentialBloom<T>* EBmin, ExponentialBloom<T>* EBmax, uint indicebloom){
     Bloom<T>* leon(leaf_filters[level]);
     bm::bvector<>::enumerator en = leon->BV->first();
     bm::bvector<>::enumerator en_end = leon->BV->end();
     while (en < en_end){
-        if((*(EB->filter))[*en]==0){
-            (*(EB->filter))[*en]=level;
+        if((*(EBmin->filter))[*en]==0){
+            // cout<<"YES"<<indicebloom+1<<endl;
+            (*(EBmin->filter))[*en]=indicebloom+1;
+            (*(EBmax->filter))[*en]=indicebloom+1;
             number_bit_set_abt++;
-        }else if((*(EB->filter))[*en]<level){
-            (*(EB->filter))[*en]=level;
+        }else if((*(EBmin->filter))[*en]>(indicebloom+1)){
+            (*(EBmin->filter))[*en]=indicebloom+1;
+        }
+        if((*(EBmax->filter))[*en]==0){
+        }else if((*(EBmax->filter))[*en]<(indicebloom+1)){
+            (*(EBmax->filter))[*en]=indicebloom+1;
         }
         ++en;  
         number_bit_set++;
@@ -172,7 +138,12 @@ template <class T>
 T Best<T>::query_key_min(const uint64_t key){
     T min_level=0;
     if(trunk!=NULL){
-        min_level=leaf_number-trunk->check_key(key);
+        min_level=trunk->check_key(key);
+        if(min_level==0){
+            return leaf_number+1;
+        }else{
+            return min_level-1;
+        }
     }
     return min_level;
 }
@@ -183,7 +154,12 @@ template <class T>
 T Best<T>::query_key_max(const uint64_t key){
     T max_level=leaf_number;
     if(reverse_trunk!=NULL){
-        max_level=leaf_number-reverse_trunk->check_key(key);
+        max_level=reverse_trunk->check_key(key);
+        if(max_level==0){
+            return 0;
+        }else{
+            return max_level-1;
+        }
     }
     return max_level;
 }
@@ -244,7 +220,6 @@ void Best<T>::load_bf(uint64_t leaf_number){
 
 template <class T>
 void Best<T>::load(uint64_t leaf_number, bool double_index ){
-    cout<<"LOAD"<<endl;
     leaf_filters.clear();
     for(uint i = 0; i < leaf_number; ++i){
         leaf_filters.push_back(new Bloom<T>(this));
@@ -255,11 +230,9 @@ void Best<T>::load(uint64_t leaf_number, bool double_index ){
         in.read(reinterpret_cast<char*>(&indiceBloom), sizeof(indiceBloom));
         leaf_filters[indiceBloom]->load_disk(&in);
     }
-    cout<<"LOAD BF OK "<<endl;
     trunk=new ExponentialBloom<T>(size,number_hash_function);
     void* point = (trunk->filter->data());
     in.read((char*)point, sizeof(T)*size);
-    cout<<"LOAD ABF OK"<<endl;
     if(double_index){
         reverse_trunk=new ExponentialBloom<T>(size,number_hash_function);
         void* point = reverse_trunk->filter->data();
@@ -271,11 +244,7 @@ void Best<T>::load(uint64_t leaf_number, bool double_index ){
 
 template <class T>
 void Best<T>::load(uint64_t leaf_number, bool double_index, vector<bool>* BBV ){
-    cout<<"LOAD"<<endl;
-    cout<<leaf_number<<endl;
-    cout<<leaf_filters.size()<<endl;
     leaf_filters.clear();
-    cout<<"LOAD"<<endl;
     Bloom<T>* leon(new Bloom<T>(this));
     zstr::ifstream in(prefix);
     bm::bvector<>::enumerator en;

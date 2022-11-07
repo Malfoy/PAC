@@ -160,6 +160,7 @@ int main(int argc, char **argv)
     cout<<w_dir<<endl;
     //WE BUILD THE INDEX
     if(existing_index != ""){
+        //TODO CHECK UPDATE
         existing_index=absolute(existing_index);
         switch (bit_encoding)
         {
@@ -209,8 +210,7 @@ int main(int argc, char **argv)
                 break;
             }
         }
-    }else if (fof!="")
-	{
+    }else if (fof!=""){
 
         switch (bit_encoding)
         {
@@ -218,20 +218,21 @@ int main(int argc, char **argv)
             {
                 BestPart<uint8_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number);
                 ever.insert_file_of_file(fof);
-                ever.serialize();
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
                 }
+                 ever.serialize();
                 break;
             }
             case 16:
             {
                 BestPart<uint16_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number);
                 ever.insert_file_of_file(fof);
-                ever.serialize();
+                
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
                 }
+                ever.serialize();
                 break;
             }
             case 32:
@@ -242,9 +243,6 @@ int main(int argc, char **argv)
                     ever.query_file(query_file,query_output);
                 }
                 ever.serialize();
-                if(query_file!=""){
-                    ever.query_file(query_file,query_output);
-                }
                 break;
             }
         }

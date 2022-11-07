@@ -274,7 +274,6 @@ void BestPart<T>::query_file(const string& filename, const string& output){
         }
         delete BBV;
     }
-    cout<<"query done"<<endl;
     for(uint i=0;i<result->size();i++) {
         {   
             out<<(*result)[i].first<<"\n";
@@ -377,7 +376,6 @@ uint64_t BestPart<T>::query_bucket2(const vector<pair<uint64_t,uint32_t> >& colo
             }
         }
     }
-    //~ cout<<"end read BBv"<<endl;
     delete buckets[bucket_id];
     buckets[bucket_id]=NULL;
     return sum;
@@ -388,24 +386,19 @@ uint64_t BestPart<T>::query_bucket2(const vector<pair<uint64_t,uint32_t> >& colo
 template <class T>
 uint64_t BestPart<T>::query_bucket(const vector<pair<uint64_t,uint32_t> >& colored_kmer, vector< pair<string,vector<uint32_t> > >& result, uint bucket_id,vector<bool>* BBV){
     uint64_t sum(0);
-    cout<<"query_bucket"<<endl;
     uint64_t size_partition=size/bucket_number;
-    cout<<"???"<<endl;
-    cout<<buckets.size()<<" "<<bucket_id<<endl;
     buckets[bucket_id]->load(leaf_number,use_double_index,BBV);
     buckets[bucket_id]->leaf_number=leaf_number;
     uint64_t mask(size_partition-1);
-     cout<<"query_bucket LOAD"<<endl;
     for(uint32_t i = 0; i < colored_kmer.size();++i){
-        uint64_t min_local(leaf_number-1),max_local(leaf_number-1);
+        uint64_t min_local(0),max_local(leaf_number-1);
         min_local=buckets[bucket_id]->query_key_min(colored_kmer[i].first);
         if(use_double_index){
             max_local=buckets[bucket_id]->query_key_max(colored_kmer[i].first);
         }
         uint64_t hash((hash_family(colored_kmer[i].first,0) & mask)*leaf_number);
-        cout<<min_local<<endl;
         for(uint64_t l=min_local+hash ;l<=max_local+hash;++l){
-        sum++;
+            sum++;
             if((*BBV)[l]){
                 result[colored_kmer[i].second].second[l-hash]++;
             }
@@ -458,9 +451,10 @@ void  BestPart<T>::insert_file(const string& filename, uint level, uint32_t indi
     }
     
     for(uint i=0;i<buckets.size();++i){
-        buckets[i]->insert_leaf_trunk_min(level,buckets[i]->trunk);
         if(use_double_index){
-            buckets[i]->insert_leaf_trunk_max(level,buckets[i]->trunk);
+            buckets[i]->insert_leaf_trunk(level,buckets[i]->trunk,buckets[i]->reverse_trunk,indice_bloom);
+        }else{
+            buckets[i]->insert_leaf_trunk(level,buckets[i]->trunk,indice_bloom);
         }
     }
 
@@ -492,7 +486,7 @@ void BestPart<T>::insert_file_of_file(const string& filename){
     }
     
     auto  start = chrono::system_clock::now();;
-    #pragma omp parallel num_threads (core_number)
+    // #pragma omp parallel num_threads (core_number)
     {
         string ref;
         uint level;
@@ -567,7 +561,6 @@ void BestPart<T>::serialize()const{
 
 template <class T>
 void BestPart<T>::index(){
-    cout<<"GO INDEX"<<endl;
     #pragma omp parallel for num_threads(core_number)
     for(uint i=0;i<buckets.size();++i){
         // buckets[i]->load_bf(leaf_number);
@@ -582,8 +575,8 @@ void BestPart<T>::index(){
         nbbs=buckets[i]->number_bit_set_abt;
         #pragma omp atomic
         number_bit_set_abt+=nbbs;
-        delete buckets[i];
-        buckets[i]=NULL;
+        // delete buckets[i];
+        // buckets[i]=NULL;
     }
 }
 

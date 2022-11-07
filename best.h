@@ -87,8 +87,8 @@ public:
     void update_kmer_RC(uint64_t& min, char nuc)const;
     void insert_last_leaf_trunk(uint level,ExponentialBloom<T>* EB);
     // void insert_leaf_trunk(uint indice,uint level,ExponentialBloom<T>* EB);
-    void insert_leaf_trunk_max(uint level,ExponentialBloom<T>* EB);
-    void insert_leaf_trunk_min(uint level,ExponentialBloom<T>* EB);
+    void insert_leaf_trunk(uint level,ExponentialBloom<T>* EB,uint indicebloom);
+    void insert_leaf_trunk(uint level,ExponentialBloom<T>* EB,ExponentialBloom<T>* EB2,uint indicebloom);
     void load(uint64_t leaf_number,bool double_index);
 
     //HIGH LEVEL FUNCTIONS
