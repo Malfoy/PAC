@@ -486,7 +486,7 @@ void BestPart<T>::insert_file_of_file(const string& filename){
     }
     
     auto  start = chrono::system_clock::now();;
-    // #pragma omp parallel num_threads (core_number)
+    #pragma omp parallel num_threads (core_number)
     {
         string ref;
         uint level;
