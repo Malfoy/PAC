@@ -50,6 +50,9 @@ void Best<T>::optimize(uint i){
 
 
 
+
+
+
 template <class T>
 void Best<T>::dump(uint i,bm::serializer<bm::bvector<> >& bvs){
     disk_space_used+=leaf_filters[i]->dump_disk(bvs,out,i);
@@ -114,9 +117,14 @@ void Best<T>::insert_leaf_trunk(uint level, ExponentialBloom<T>* EBmin, Exponent
     Bloom<T>* leon(leaf_filters[level]);
     bm::bvector<>::enumerator en = leon->BV->first();
     bm::bvector<>::enumerator en_end = leon->BV->end();
+    uint64_t last_pos(0);
     while (en < en_end){
+        // for(uint64_t i(0);i<*en-last_pos;++i){
+        //     cerr<<'0';
+        // }
+        // cerr<<'1';
+        // last_pos=*en;
         if((*(EBmin->filter))[*en]==0){
-            // cout<<"YES"<<indicebloom+1<<endl;
             (*(EBmin->filter))[*en]=indicebloom+1;
             (*(EBmax->filter))[*en]=indicebloom+1;
             number_bit_set_abt++;
@@ -130,6 +138,9 @@ void Best<T>::insert_leaf_trunk(uint level, ExponentialBloom<T>* EBmin, Exponent
         ++en;  
         number_bit_set++;
     }
+    // for(uint64_t i(0);i<*en-last_pos;++i){
+    //     cerr<<'0';
+    // }
 }
 
 

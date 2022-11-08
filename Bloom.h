@@ -35,6 +35,7 @@ public:
     bool check_key(uint64_t key);
     uint64_t get_cardinality()const;
     uint64_t dump_disk(bm::serializer<bm::bvector<> >& bvs,zstr::ofstream* out,uint32_t i);
+    bm::serializer<bm::bvector<> >::buffer serialize(bm::serializer<bm::bvector<> >& bvs);
     void load_disk(zstr::ifstream* in);
     void free_ram();
     Bloom(Best<T>* Ifather);

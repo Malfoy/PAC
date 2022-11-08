@@ -16,7 +16,7 @@ template <class T>
  Bloom<T>::Bloom(Best<T>* Ifather){
     father=Ifather;
     BV=new bm::bvector<>(father->size+1,bm::BM_GAP);
-    
+    BV->init();
 }
 
 
@@ -24,7 +24,8 @@ template <class T>
 void Bloom<T>::insert_key(uint64_t key){
     for(uint64_t i=0; i<father->number_hash_function;++i){
         uint64_t h=(hash_family(key,i))&(father->size);
-        (*BV)[h]=true;
+        // (*BV)[h]=true;
+        BV->set_bit_no_check(h);
     }
 }
 
@@ -54,7 +55,15 @@ uint64_t Bloom<T>::dump_disk(bm::serializer<bm::bvector<> >& bvs, zstr::ofstream
     out->write((char*)point2, sz);
     out->flush();
     return sz;
+}
 
+
+template <class T>
+bm::serializer<bm::bvector<> >::buffer Bloom<T>::serialize(bm::serializer<bm::bvector<> >& bvs){
+	bm::serializer<bm::bvector<> >::buffer sbuf;
+    bvs.serialize(*(BV), sbuf);
+    free_ram();
+    return sbuf;
 }
 
 

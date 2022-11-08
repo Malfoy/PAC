@@ -261,7 +261,7 @@ void BestPart<T>::query_file(const string& filename, const string& output){
         }
     }
     uint64_t sum_query=0;
-    // #pragma omp parallel num_threads(core_number)
+    #pragma omp parallel num_threads(core_number)
     {
         vector<bool>* BBV=new vector<bool>(leaf_number*size/bucket_number,false);
         #pragma omp for 
@@ -463,9 +463,16 @@ void  BestPart<T>::insert_file(const string& filename, uint level, uint32_t indi
 	bvs.gap_length_serialization(false);
     for(uint i=0;i<buckets.size();++i){
         buckets[i]->optimize(level);
-        omp_set_lock(&mutex_array[i]);//TODO THE LOCK SHOULD NOT INCLUDE THE SERIALIZATION
+        bm::serializer<bm::bvector<> >::buffer sbuf=buckets[i]->leaf_filters[level]->serialize(bvs);
+        unsigned char*  buf         = sbuf.data();
+        uint64_t sz = sbuf.size();
+        auto point2 = &buf[0];
+        omp_set_lock(&mutex_array[i]);
         buckets[i]->out->write(reinterpret_cast<const char*>(&indice_bloom), sizeof(indice_bloom));
-        buckets[i]->dump(level,bvs);
+        buckets[i]->out->write(reinterpret_cast<const char*>(&sz), sizeof(sz));
+        buckets[i]->out->write((char*)point2, sz);
+        // buckets[i]->dump(level,bvs);
+        buckets[i]->out->flush();
         omp_unset_lock(&mutex_array[i]);
     }
 }
@@ -563,11 +570,6 @@ template <class T>
 void BestPart<T>::index(){
     #pragma omp parallel for num_threads(core_number)
     for(uint i=0;i<buckets.size();++i){
-        // buckets[i]->load_bf(leaf_number);
-        // uint64_t nbbs( buckets[i]->construct_trunk());
-        // if(use_double_index){
-        //     buckets[i]->construct_reverse_trunk();
-        // }
         buckets[i]->serialize();
         uint64_t nbbs=buckets[i]->disk_space_used;
         #pragma omp atomic
@@ -575,8 +577,6 @@ void BestPart<T>::index(){
         nbbs=buckets[i]->number_bit_set_abt;
         #pragma omp atomic
         number_bit_set_abt+=nbbs;
-        // delete buckets[i];
-        // buckets[i]=NULL;
     }
 }
 
