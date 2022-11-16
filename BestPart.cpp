@@ -215,7 +215,7 @@ vector<pair<vector<uint64_t>,uint64_t> > BestPart<T>::get_super_kmers(const stri
             }
         }
         // COMPUTE KMER MINIMIZER
-        if (bfc_hash_64(old_minimizer)%bucket_number!= bfc_hash_64(minimizer)%bucket_number) {
+        if (unrevhash(old_minimizer)%bucket_number!= unrevhash(minimizer)%bucket_number) {
             old_minimizer = (bfc_hash_64(old_minimizer)%bucket_number);
             result.push_back({superkmer,old_minimizer});
             superkmer.clear();
@@ -225,7 +225,7 @@ vector<pair<vector<uint64_t>,uint64_t> > BestPart<T>::get_super_kmers(const stri
         superkmer.push_back(canon);
     }
     if (ref.size() - last_position > K - 1) {
-        old_minimizer = (bfc_hash_64(old_minimizer));
+        old_minimizer = (unrevhash(old_minimizer)%bucket_number);
         result.push_back({superkmer,old_minimizer});
         superkmer.clear();
     }
