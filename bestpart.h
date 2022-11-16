@@ -37,6 +37,7 @@ public:
     uint small_minimizer_size;
     uint large_minimizer_size;
     uint bucket_number;
+    uint64_t bucket_mask;
     uint large_minimizer_number;
     bool filter;
     bool use_double_index;
@@ -59,6 +60,7 @@ public:
         leaf_number=0;
         small_minimizer_size=bucketing;
         bucket_number=1<<(2*small_minimizer_size);
+        bucket_mask=bucket_number-1;
         large_minimizer_size=small_minimizer_size+3;
         large_minimizer_number=1<<(2*large_minimizer_size);
         size=Isize;
@@ -137,6 +139,7 @@ public:
 
     //LOW LEVEL FUNCTIONS
     void change_level();
+    uint64_t bfc_hash_64(uint64_t key);
     void check_key_leaf(const uint64_t key,const uint level)const;
     uint64_t rcb(uint64_t min,uint64_t n)const;
     void updateK(uint64_t& min, char nuc)const;

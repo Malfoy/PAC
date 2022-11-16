@@ -29,6 +29,20 @@ uint64_t str2num(const string& str) {
 }
 
 
+template <class T>
+uint64_t BestPart<T>::bfc_hash_64(uint64_t key)
+{
+	key = (~key + (key << 21)) & bucket_mask; // key = (key << 21) - key - 1;
+	key = key ^ key >> 24;
+	key = ((key + (key << 3)) + (key << 8)) & bucket_mask; // key * 265
+	key = key ^ key >> 14;
+	key = ((key + (key << 2)) + (key << 4)) & bucket_mask; // key * 21
+	key = key ^ key >> 28;
+	key = (key + (key << 31)) & bucket_mask;
+	return key;
+}
+
+
 
 uint64_t revhash(uint64_t x) {
 	// return hash64shift(x);
@@ -201,8 +215,8 @@ vector<pair<vector<uint64_t>,uint64_t> > BestPart<T>::get_super_kmers(const stri
             }
         }
         // COMPUTE KMER MINIMIZER
-        if (revhash(old_minimizer) % bucket_number != revhash(minimizer) % bucket_number) {
-            old_minimizer = (revhash(old_minimizer) % bucket_number);
+        if (bfc_hash_64(old_minimizer)!= bfc_hash_64(minimizer)) {
+            old_minimizer = (bfc_hash_64(old_minimizer));
             result.push_back({superkmer,old_minimizer});
             superkmer.clear();
             last_position = i + 1;
@@ -211,7 +225,7 @@ vector<pair<vector<uint64_t>,uint64_t> > BestPart<T>::get_super_kmers(const stri
         superkmer.push_back(canon);
     }
     if (ref.size() - last_position > K - 1) {
-        old_minimizer = (revhash(old_minimizer) % bucket_number);
+        old_minimizer = (bfc_hash_64(old_minimizer));
         result.push_back({superkmer,old_minimizer});
         superkmer.clear();
     }
