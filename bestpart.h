@@ -60,9 +60,9 @@ public:
         leaf_number=0;
         small_minimizer_size=bucketing;
         bucket_number=1<<(2*small_minimizer_size);
-        bucket_mask=bucket_number-1;
         large_minimizer_size=small_minimizer_size+3;
         large_minimizer_number=1<<(2*large_minimizer_size);
+        bucket_mask=large_minimizer_number-1;
         size=Isize;
         number_hash_function=Inumber_hash_function;
         buckets.resize(bucket_number,NULL);
