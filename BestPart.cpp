@@ -109,13 +109,13 @@ uint64_t BestPart<T>::canonize(uint64_t x, uint64_t n) {
 template <class T>
 uint64_t BestPart<T>::regular_minimizer_pos(uint64_t seq, uint64_t& position) {
 	uint64_t mini, mmer;
-	mmer = seq % large_minimizer_number;
+	mmer = seq &large_bucket_mask;
 	mini = mmer        = canonize(mmer, large_minimizer_size);
 	uint64_t hash_mini = (unrevhash(mmer));
 	position           = 0;
 	for (uint64_t i(1); i <= K - large_minimizer_size; i++) {
 		seq >>= 2;
-		mmer          = seq % large_minimizer_number;
+		mmer          = seq &large_bucket_mask;
 		mmer          = canonize(mmer, large_minimizer_size);
 		uint64_t hash = (unrevhash(mmer));
 		if (hash_mini > hash) {
@@ -133,7 +133,7 @@ template <class T>
 void BestPart<T>::updateK(uint64_t& min, char nuc)const {
   min<<=2;
   min+=nuc2int(nuc);
-  min%=offsetUpdatekmer;
+  min&=offsetUpdatekmer;
 }
 
 
@@ -142,7 +142,7 @@ template <class T>
 void BestPart<T>::updateM(uint64_t& min, char nuc)const {
   min<<=2;
   min+=nuc2int(nuc);
-  min%=offsetUpdateminimizer;
+  min&=offsetUpdateminimizer;
 }
 
 
@@ -215,8 +215,8 @@ vector<pair<vector<uint64_t>,uint64_t> > BestPart<T>::get_super_kmers(const stri
             }
         }
         // COMPUTE KMER MINIMIZER
-        if (unrevhash(old_minimizer)%bucket_number!= unrevhash(minimizer)%bucket_number) {
-            old_minimizer = (bfc_hash_64(old_minimizer)%bucket_number);
+        if ((unrevhash(old_minimizer)&bucket_mask)!= (unrevhash(minimizer)&bucket_mask)) {
+            old_minimizer = (bfc_hash_64(old_minimizer)&bucket_mask);
             result.push_back({superkmer,old_minimizer});
             superkmer.clear();
             last_position = i + 1;
@@ -225,7 +225,7 @@ vector<pair<vector<uint64_t>,uint64_t> > BestPart<T>::get_super_kmers(const stri
         superkmer.push_back(canon);
     }
     if (ref.size() - last_position > K - 1) {
-        old_minimizer = (unrevhash(old_minimizer)%bucket_number);
+        old_minimizer = (unrevhash(old_minimizer)&bucket_mask);
         result.push_back({superkmer,old_minimizer});
         superkmer.clear();
     }
@@ -513,32 +513,6 @@ void BestPart<T>::insert_file_of_file(const string& filename){
     for(uint i=0;i<file_names.size();++i){
         insert_file(file_names[i],omp_get_thread_num (),i);
     }
-    //~ #pragma omp parallel num_threads (core_number)
-    //~ {
-        //~ string ref;
-        //~ uint level;
-        //~ bool go;
-        //~ int idt=omp_get_thread_num ();
-        //~ while(not in.eof()) {
-            //~ #pragma omp critical (inputfile)
-            //~ {
-                //~ getline(in,ref);
-                //~ if(exists_test(ref)){
-                    //~ level=leaf_number;
-                    //~ leaf_number++;
-                    //~ go=true;
-                //~ }else{
-                    //~ go=false;
-                //~ }
-            //~ }
-            //~ if(go){
-                //~ insert_file(ref,idt,level);
-                //~ if(level%1000==0){
-                    //~ cout<<level<<" files"<<endl;
-                //~ }
-            //~ }
-        //~ }
-    //~ }
     auto  middle = chrono::system_clock::now();
     chrono::duration<double> elapsed_seconds = middle - start;
     cout <<  "Bloom construction time: " << elapsed_seconds.count() << "s\n";

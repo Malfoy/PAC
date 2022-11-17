@@ -38,6 +38,7 @@ public:
     uint large_minimizer_size;
     uint bucket_number;
     uint64_t bucket_mask;
+    uint64_t large_bucket_mask;
     uint large_minimizer_number;
     bool filter;
     bool use_double_index;
@@ -60,9 +61,10 @@ public:
         leaf_number=0;
         small_minimizer_size=bucketing;
         bucket_number=1<<(2*small_minimizer_size);
-        large_minimizer_size=small_minimizer_size+3;
+        bucket_mask=bucket_number-1;
+        large_minimizer_size=small_minimizer_size+4;
         large_minimizer_number=1<<(2*large_minimizer_size);
-        bucket_mask=large_minimizer_number-1;
+        large_bucket_mask=large_minimizer_number-1;
         size=Isize;
         number_hash_function=Inumber_hash_function;
         buckets.resize(bucket_number,NULL);
@@ -73,8 +75,10 @@ public:
         }
         offsetUpdatekmer=1;
         offsetUpdatekmer<<=2*K;
+        offsetUpdatekmer--;
         offsetUpdateminimizer=1;
         offsetUpdateminimizer<<=(2*large_minimizer_size);
+        offsetUpdateminimizer--;
         disk_space_used=0;
         number_bit_set_abt=0;
     }
