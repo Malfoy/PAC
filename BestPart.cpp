@@ -29,9 +29,9 @@ uint64_t str2num(const string& str) {
 }
 
 
+
 template <class T>
-uint64_t BestPart<T>::bfc_hash_64(uint64_t key)
-{
+uint64_t BestPart<T>::bfc_hash_64(uint64_t key){
 	key = (~key + (key << 21)) & bucket_mask; // key = (key << 21) - key - 1;
 	key = key ^ key >> 24;
 	key = ((key + (key << 3)) + (key << 8)) & bucket_mask; // key * 265
@@ -65,18 +65,18 @@ uint64_t unrevhash(uint64_t x) {
 
 
 template <class T>
-void BestPart<T>::insert_keys(const vector<uint64_t>& key,uint minimizer,uint level,Bloom<T>* unique_filter){
+void BestPart<T>::insert_keys(const vector<uint64_t>& key,uint minimizer,uint level,Bloom<T>* unique_filter,uint32_t indice_bloom){
     if(filter){
         for(uint i=0;i<key.size(); ++i){
             if(unique_filter->check_key(key[i])){
-                buckets[minimizer]->insert_key(key[i],level);
+                buckets[minimizer]->insert_key(key[i],level,indice_bloom);
             }else{
                 unique_filter->insert_key(key[i]);
             }
         }
     }else{
         for(uint i=0;i<key.size(); ++i){
-            buckets[minimizer]->insert_key(key[i],level);
+            buckets[minimizer]->insert_key(key[i],level,indice_bloom);
         }
     }
 }
@@ -235,10 +235,10 @@ vector<pair<vector<uint64_t>,uint64_t> > BestPart<T>::get_super_kmers(const stri
 
 
 template <class T>
-void BestPart<T>::insert_sequence(const string& reference,uint level, Bloom<T>* unique_filter){
+void BestPart<T>::insert_sequence(const string& reference,uint level, Bloom<T>* unique_filter,uint32_t indice_bloom){
     auto V(get_super_kmers(reference));
     for(uint32_t i = 0; i < V.size();++i){
-        insert_keys(V[i].first, V[i].second,level,unique_filter);
+        insert_keys(V[i].first, V[i].second,level,unique_filter,indice_bloom);
     }
 }
 
@@ -452,11 +452,9 @@ void  BestPart<T>::insert_file(const string& filename, uint level, uint32_t indi
     {
         string ref;
         while(not in.eof()) {
-            {
-                Biogetline(&in,ref,type,K);
-            }
+            Biogetline(&in,ref,type,K);
             if(ref.size()>K) {
-                insert_sequence(ref,level,unique_filter);
+                insert_sequence(ref,level,unique_filter,indice_bloom);
             }
         }
     }
@@ -464,14 +462,6 @@ void  BestPart<T>::insert_file(const string& filename, uint level, uint32_t indi
         delete unique_filter;
     }
     
-    for(uint i=0;i<buckets.size();++i){
-        if(use_double_index){
-            buckets[i]->insert_leaf_trunk(level,buckets[i]->trunk,buckets[i]->reverse_trunk,indice_bloom);
-        }else{
-            buckets[i]->insert_leaf_trunk(level,buckets[i]->trunk,indice_bloom);
-        }
-    }
-
     bm::serializer<bm::bvector<> > bvs;
 	bvs.byte_order_serialization(false);
 	bvs.gap_length_serialization(false);
@@ -536,14 +526,15 @@ void BestPart<T>::insert_file_of_file(const string& filename){
     auto  middle = chrono::system_clock::now();
     chrono::duration<double> elapsed_seconds = middle - start;
     cout <<  "Bloom construction time: " << elapsed_seconds.count() << "s\n";
-    cout<<intToString(getMemorySelfMaxUsed())<<" KB total"<<endl;
+    cout<<intToString(getMemorySelfMaxUsed()/1024)<<" MB RAM used"<<endl;
+    
     index();
     auto  end = chrono::system_clock::now();
     elapsed_seconds = end - middle;
     cout <<  "Exponential Bloom construction time: " << elapsed_seconds.count() << "s\n";
     elapsed_seconds = end - start;
     cout <<  "Total Index time: " << elapsed_seconds.count() << "s\n";
-    cout<<intToString(getMemorySelfMaxUsed())<<" kB total"<<endl;
+    cout<<intToString(getMemorySelfMaxUsed()/1024)<<" MB RAM used"<<endl;
     current_path(old);
 }
 
@@ -575,7 +566,7 @@ void BestPart<T>::serialize()const{
     out<<flush;
     fb.close();
     current_path(initial_path);
-    cout<<"Index use "<<intToString(disk_space_used)<<" Bytes on disk"<<endl;
+    //~ cout<<"Index use "<<intToString(disk_space_used)<<" Bytes on disk"<<endl;
 }
 
 

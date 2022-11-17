@@ -12,6 +12,9 @@ using namespace filesystem;
 
 
 
+
+
+
 template <class T>
  Bloom<T>::Bloom(Best<T>* Ifather){
     father=Ifather;
@@ -27,6 +30,19 @@ void Bloom<T>::insert_key(uint64_t key){
         // (*BV)[h]=true;
         BV->set_bit_no_check(h);
     }
+}
+
+
+template <class T>
+void Bloom<T>::print(){
+    for(uint64_t i=0; i<father->size;++i){
+        if((*BV)[i]==false){
+            cerr<<'0';
+        }else{
+            cerr<<'1';
+        }
+    }
+    cerr<<'\n';
 }
 
 

@@ -79,7 +79,7 @@ public:
 
 
     //LOW LEVEL FUNCTIONS
-    void insert_key(const uint64_t key,uint level);
+    void insert_key(const uint64_t key,uint level,uint32_t indiceBloom);
     void change_level();
     void check_key_leaf(const uint64_t key,const uint level)const;
     uint64_t rcb(uint64_t min)const;

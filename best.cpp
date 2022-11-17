@@ -18,8 +18,28 @@ using namespace filesystem;
 
 
 template <class T>
-void Best<T>::insert_key(const uint64_t key,uint level){
-    leaf_filters[level]->insert_key(key);
+void Best<T>::insert_key(const uint64_t key,uint level,uint32_t indicebloom){
+    //~ leaf_filters[level]->insert_key(key);
+    uint64_t h(hash64shift(key)&size);
+    leaf_filters[level]->BV->set_bit_no_check(h);
+    if(reverse_trunk!=NULL){
+        if((*(trunk->filter))[h]==0){
+            (*(trunk->filter))[h]=indicebloom+1;
+            (*(reverse_trunk->filter))[h]=indicebloom+1;
+        }else if((*(trunk->filter))[h]>(indicebloom+1)){
+            (*(trunk->filter))[h]=indicebloom+1;
+        }
+        if((*(reverse_trunk->filter))[h]==0){
+        }else if((*(reverse_trunk->filter))[h]<(indicebloom+1)){
+            (*(reverse_trunk->filter))[h]=indicebloom+1;
+        }
+    }else{
+        if((*(trunk->filter))[h]==0){
+            (*(trunk->filter))[h]=indicebloom+1;
+        }else if((*(trunk->filter))[h]>(indicebloom+1)){
+            (*(trunk->filter))[h]=indicebloom+1;
+        }
+    }
 }
 
 
@@ -117,13 +137,7 @@ void Best<T>::insert_leaf_trunk(uint level, ExponentialBloom<T>* EBmin, Exponent
     Bloom<T>* leon(leaf_filters[level]);
     bm::bvector<>::enumerator en = leon->BV->first();
     bm::bvector<>::enumerator en_end = leon->BV->end();
-    uint64_t last_pos(0);
     while (en < en_end){
-        // for(uint64_t i(0);i<*en-last_pos;++i){
-        //     cerr<<'0';
-        // }
-        // cerr<<'1';
-        // last_pos=*en;
         if((*(EBmin->filter))[*en]==0){
             (*(EBmin->filter))[*en]=indicebloom+1;
             (*(EBmax->filter))[*en]=indicebloom+1;
@@ -138,9 +152,6 @@ void Best<T>::insert_leaf_trunk(uint level, ExponentialBloom<T>* EBmin, Exponent
         ++en;  
         number_bit_set++;
     }
-    // for(uint64_t i(0);i<*en-last_pos;++i){
-    //     cerr<<'0';
-    // }
 }
 
 
@@ -240,6 +251,9 @@ void Best<T>::load(uint64_t leaf_number, bool double_index ){
         uint32_t indiceBloom;
         in.read(reinterpret_cast<char*>(&indiceBloom), sizeof(indiceBloom));
         leaf_filters[indiceBloom]->load_disk(&in);
+    }
+    for(uint i = 0; i < leaf_number; ++i){
+        leaf_filters[i]->print();
     }
     trunk=new ExponentialBloom<T>(size,number_hash_function);
     void* point = (trunk->filter->data());

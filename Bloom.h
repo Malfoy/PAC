@@ -38,6 +38,7 @@ public:
     bm::serializer<bm::bvector<> >::buffer serialize(bm::serializer<bm::bvector<> >& bvs);
     void load_disk(zstr::ifstream* in);
     void free_ram();
+    void print();
     Bloom(Best<T>* Ifather);
     ~Bloom(){ delete BV;}
 };
