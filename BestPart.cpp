@@ -475,12 +475,24 @@ void  BestPart<T>::insert_file(const string& filename, uint level, uint32_t indi
         buckets[i]->out->write(reinterpret_cast<const char*>(&indice_bloom), sizeof(indice_bloom));
         buckets[i]->out->write(reinterpret_cast<const char*>(&sz), sizeof(sz));
         buckets[i]->out->write((char*)point2, sz);
-        // buckets[i]->dump(level,bvs);
-        buckets[i]->out->flush();
         omp_unset_lock(&mutex_array[i]);
     }
 }
 
+
+vector<string> parse_fof(const string& filename){
+    vector<string> result;
+    string ref;
+    path vodka(absolute(filename));
+    zstr::ifstream in(vodka);
+    while(not in.eof()){
+        getline(in,ref);
+        if(exists_test(ref)){
+            result.push_back(ref);
+        }
+    }
+    return result;
+}
 
 
 template <class T>
@@ -488,41 +500,45 @@ void BestPart<T>::insert_file_of_file(const string& filename){
     cout<<"I index "<<K<<"mers with Bloom filters of size " <<intToString(size)<<" with "<<number_hash_function<<" hash functions  using "<<intToString(1<<(2*small_minimizer_size))<<" partitions "<<endl;
 
     path old(current_path());
-    path vodka(absolute(filename));
-    zstr::ifstream in(vodka);
+    vector<string> file_names(parse_fof(filename));
+    leaf_number=file_names.size();
     cout<<"Insert file of file "<<filename<<endl;
-    path initial_path=current_path();
+    //~ path initial_path=current_path();
     for(uint i(0);i<core_number;++i){
         add_leaf();
     }
     
-    auto  start = chrono::system_clock::now();;
-    #pragma omp parallel num_threads (core_number)
-    {
-        string ref;
-        uint level;
-        bool go;
-        int idt=omp_get_thread_num ();
-        while(not in.eof()) {
-            #pragma omp critical (inputfile)
-            {
-                getline(in,ref);
-                if(exists_test(ref)){
-                    level=leaf_number;
-                    leaf_number++;
-                    go=true;
-                }else{
-                    go=false;
-                }
-            }
-            if(go){
-                insert_file(ref,idt,level);
-                if(level%1000==0){
-                    cout<<level<<" files"<<endl;
-                }
-            }
-        }
+    auto  start = chrono::system_clock::now();
+    #pragma omp parallel for num_threads (core_number)
+    for(uint i=0;i<file_names.size();++i){
+        insert_file(file_names[i],omp_get_thread_num (),i);
     }
+    //~ #pragma omp parallel num_threads (core_number)
+    //~ {
+        //~ string ref;
+        //~ uint level;
+        //~ bool go;
+        //~ int idt=omp_get_thread_num ();
+        //~ while(not in.eof()) {
+            //~ #pragma omp critical (inputfile)
+            //~ {
+                //~ getline(in,ref);
+                //~ if(exists_test(ref)){
+                    //~ level=leaf_number;
+                    //~ leaf_number++;
+                    //~ go=true;
+                //~ }else{
+                    //~ go=false;
+                //~ }
+            //~ }
+            //~ if(go){
+                //~ insert_file(ref,idt,level);
+                //~ if(level%1000==0){
+                    //~ cout<<level<<" files"<<endl;
+                //~ }
+            //~ }
+        //~ }
+    //~ }
     auto  middle = chrono::system_clock::now();
     chrono::duration<double> elapsed_seconds = middle - start;
     cout <<  "Bloom construction time: " << elapsed_seconds.count() << "s\n";
