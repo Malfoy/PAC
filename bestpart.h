@@ -149,11 +149,11 @@ public:
     void insert_last_leaf_trunk();
     uint64_t regular_minimizer_pos(uint64_t seq, uint64_t& position);
     uint64_t canonize(uint64_t x, uint64_t n);
-    void insert_keys(const vector<uint64_t>& key,uint minimizer,uint level,Bloom<T>* unique_filter);
+    void insert_keys(const vector<uint64_t>& key,uint minimizer,uint level,Bloom<T>* unique_filter,uint32_t indiceBloom);
     vector<T> query_keys(const vector<uint64_t>& key,uint minimizer);
     vector<pair<vector<uint64_t>,uint64_t> > get_super_kmers(const string& ref);
     //HIGH LEVEL FUNCTIONS
-    void insert_sequence(const string& reference,uint level,Bloom<T>* unique_filter) ;
+    void insert_sequence(const string& reference,uint level,Bloom<T>* unique_filter,uint32_t indiceBloom) ;
     void insert_file(const string& filename,uint level, uint32_t indice_bloom);
     void insert_file_of_file(const string& filename);
     vector<uint> query_key(const uint64_t key);
