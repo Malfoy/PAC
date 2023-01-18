@@ -191,7 +191,9 @@ vector<pair<vector<uint64_t>,uint64_t> > BestPart<T>::get_super_kmers(const stri
     old_minimizer     = minimizer;
     uint64_t hash_min = unrevhash(minimizer);
     uint64_t i(0);
-    superkmer.push_back(canon);
+    if(canon%mod==0){
+        superkmer.push_back(canon);
+    }
     for (; i + K < ref.size(); ++i) {
         updateK(seq, ref[i + K]);
         updateRCK(rcseq, ref[i + K]);
@@ -222,7 +224,9 @@ vector<pair<vector<uint64_t>,uint64_t> > BestPart<T>::get_super_kmers(const stri
             last_position = i + 1;
             old_minimizer = minimizer;
         }
-        superkmer.push_back(canon);
+        if(canon%mod==0){
+            superkmer.push_back(canon);
+        }
     }
     if (ref.size() - last_position > K - 1) {
         old_minimizer = (unrevhash(old_minimizer)&bucket_mask);
@@ -553,6 +557,7 @@ void BestPart<T>::serialize()const{
     out.write(reinterpret_cast<const char*>(&large_minimizer_size), sizeof(large_minimizer_size));
     out.write(reinterpret_cast<const char*>(&leaf_number), sizeof(leaf_number));
     out.write(reinterpret_cast<const char*>(&use_double_index), sizeof(use_double_index));
+    out.write(reinterpret_cast<const char*>(&mod), sizeof(mod));
     out<<flush;
     fb.close();
     current_path(initial_path);

@@ -23,7 +23,9 @@ uint16_t nb_hash_func(1), bit_encoding(16);
 uint32_t kmer_size(31);
 uint32_t nb_partition(4);
 uint64_t bf_size(134217728); 
-uint64_t core_number(24);
+uint64_t core_number(4);
+uint64_t mod(1);
+
 bool use_double_index(false),filter_unique(false);
 
 
@@ -50,7 +52,8 @@ void PrintHelp()
 			"-e                       :     Bit encoding, possible values are 8 (max 256 files), 16 (max 65,636 files), 32 (Max 4,294,967,296 files) (default: " << bit_encoding << ")\n"
             "-u                       :     Filter unique Kmers \n"
             "-p                       :     Partitionning filters in 4^p files (default: "<<nb_partition<<" for "<<intToString(1<<(2*nb_partition))<<" file per filter)\n"
-            "-c                       :     Number of core to use (default: all)\n"
+            "-c                       :     Number of core to use (default: 4)\n"
+            "-m                       :     Index one ou of m kmers (default: ALL)\n"
             "-i                       :     Build double index for faster queries \n";
 
 	exit(1);
@@ -60,7 +63,7 @@ void PrintHelp()
 
 void ProcessArgs(int argc, char** argv)
 {
-	const char* const short_opts = "k:d:q:b:f:e:l:n:hiuo:p:c:";
+	const char* const short_opts = "k:d:q:b:f:e:l:n:hiuo:p:c:m:";
 	const option long_opts[] = 
 	{
 		{"index", no_argument, nullptr, 'i'},
@@ -117,6 +120,9 @@ void ProcessArgs(int argc, char** argv)
 			case 'n':
 				nb_hash_func=stoi(optarg);
 				break;
+            case 'm':
+				mod=stoi(optarg);
+				break;
 			case 'e':
 				bit_encoding=stoi(optarg);
 				break;
@@ -167,7 +173,7 @@ int main(int argc, char **argv)
             case 8:
             {
                 if(fof!=""){
-                    BestPart<uint8_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number);
+                    BestPart<uint8_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number,mod);
                     ever.insert_previous_index(existing_index);
                     ever.insert_file_of_file(fof);
                 }else{
@@ -182,7 +188,7 @@ int main(int argc, char **argv)
             case 16:
             {
                 if(fof!=""){
-                    BestPart<uint16_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number);
+                    BestPart<uint16_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number,mod);
                     ever.insert_previous_index(existing_index);
                     ever.insert_file_of_file(fof);
                 }else{
@@ -197,7 +203,7 @@ int main(int argc, char **argv)
             case 32:
             {
                 if(fof!=""){
-                    BestPart<uint32_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number);
+                    BestPart<uint32_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number,mod);
                     ever.insert_previous_index(existing_index);
                     ever.insert_file_of_file(fof);
                 }else{
@@ -216,7 +222,7 @@ int main(int argc, char **argv)
         {
             case 8:
             {
-                BestPart<uint8_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number);
+                BestPart<uint8_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number,mod);
                 ever.insert_file_of_file(fof);
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
@@ -226,7 +232,7 @@ int main(int argc, char **argv)
             }
             case 16:
             {
-                BestPart<uint16_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number);
+                BestPart<uint16_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number,mod);
                 ever.insert_file_of_file(fof);
                 
                 if(query_file!=""){
@@ -237,7 +243,7 @@ int main(int argc, char **argv)
             }
             case 32:
             {
-                BestPart<uint32_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number);
+                BestPart<uint32_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number,mod);
                 ever.insert_file_of_file(fof);
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);

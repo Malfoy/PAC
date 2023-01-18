@@ -26,6 +26,7 @@ public:
     omp_lock_t* mutex_array;
     uint K;
     uint64_t offsetUpdatekmer;
+    uint64_t mod;
     uint64_t offsetUpdateminimizer;
     uint64_t size;
     uint64_t leaf_number;
@@ -46,9 +47,10 @@ public:
 
 
 
-    BestPart(const uint64_t Isize,const uint Inumber_hash_function,const uint Ik, bool Ifilter,const string Iwdir, bool Idouble,uint bucketing,uint Icore_number){
+    BestPart(const uint64_t Isize,const uint Inumber_hash_function,const uint Ik, bool Ifilter,const string Iwdir, bool Idouble,uint bucketing,uint Icore_number,uint64_t Imod){
         core_number=Icore_number;
         K=Ik;
+        mod=Imod;
         use_double_index=Idouble;
         w_dir=(Iwdir);
         path p {w_dir};
@@ -108,6 +110,7 @@ public:
         in.read(reinterpret_cast< char*>(&large_minimizer_size), sizeof(large_minimizer_size));
         in.read(reinterpret_cast< char*>(&leaf_number), sizeof(leaf_number));
         in.read(reinterpret_cast< char*>(&use_double_index), sizeof(use_double_index));
+        in.read(reinterpret_cast< char*>(&mod), sizeof(mod));
         bucket_number=1<<(2*small_minimizer_size);
         large_minimizer_number=1<<(2*large_minimizer_size);
         mutex_array=new omp_lock_t[bucket_number];

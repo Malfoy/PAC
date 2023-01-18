@@ -1,2 +1,3 @@
-test/SRR10092187_10k.unitigs.fa
-test/SRR10092188_10k.unitigs.fa
+/home/malfoy/devel/PAC/test/GCF_000864885.1_ViralProj15500_genomic.fna.gz
+/home/malfoy/devel/PAC/test/GCF_000901155.1_ViralProj183710_genomic.fna.gz
+/home/malfoy/devel/PAC/test/GCF_009858895.2_ASM985889v3_genomic.fna.gz
