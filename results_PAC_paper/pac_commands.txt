@@ -1,0 +1,13 @@
+\time ./PAC -b 4000000000 -f fof_RNA32k.txt -d indexRNA32k -u -p 5 -c 32;
+
+PAC -f fof661kbact.txt -d 661k_40m -b 40000000 -e 32 -p 5;
+PAC -f fof661kbact.txt -d 661k_400m -b 400000000 -e 32 -p 5;
+
+PAC -f fofsalmonella.txt -d salmonella -b 1000000000 -p 5 -c 64;
+PAC -f fofbacteria.txt -d RefSeq -b 1000000000 -e 32 -p 5;
+PAC -f fofsalmonella.txt -d doublesalmonella -b 1000000000 -p 5 -c 64 -i;
+PAC -f ../bacterie_refseq/fof.txt -d doubleRefSeq -b 1000000000 -e 32 -p 5 -i;
+PAC -q random1.fa -l doublesalmonella -o qdouble.gz -c 64;
+PAC -q GCF_019458845.1_ASM1945884v1_genomic.fna.gz -l doublesalmonella -o qdouble.gz -c 64;
+PAC -q random1.fa -l salmonella -o qsimple.gz -c 64;
+PAC -q GCF_019458845.1_ASM1945884v1_genomic.fna.gz -l salmonella -o qsimple.gz -c 64;
