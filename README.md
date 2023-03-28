@@ -105,7 +105,7 @@ To download and compile `PAC`  use the
 following commands:
 
 ```sh
-git clone --recursive https://github.com/Malfoy/PAC.git ;
+git clone --depth 1 --recursive https://github.com/Malfoy/PAC.git ;
 
 cd PAC ;
 
