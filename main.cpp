@@ -163,7 +163,6 @@ int main(int argc, char **argv)
     }
     bf_size=approx_power2(bf_size);
     w_dir=filesystem::absolute(w_dir);
-    cout<<w_dir<<endl;
     //WE BUILD THE INDEX
     if(existing_index != ""){
         //TODO CHECK UPDATE

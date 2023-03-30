@@ -132,7 +132,7 @@ public:
             // buckets[i]->load(leaf_number,use_double_index);
         }
         current_path(initial_path);
-        cout<<"The index  use "<<K<<"mers with Bloom filters of size " <<intToString(size)<<" with "<<number_hash_function<<" hash functions  using "<<intToString(1<<(2*small_minimizer_size))<<" partitions "<<endl;
+        cout<<"The index uses "<<K<<"mers with Bloom filters of size " <<intToString(size)<<" with "<<number_hash_function<<" hash functions  using "<<intToString(1<<(2*small_minimizer_size))<<" partitions "<<endl;
     }
 
 
