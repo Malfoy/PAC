@@ -113,11 +113,15 @@ public:
         in.read(reinterpret_cast< char*>(&mod), sizeof(mod));
         bucket_number=1<<(2*small_minimizer_size);
         large_minimizer_number=1<<(2*large_minimizer_size);
+        large_bucket_mask=large_minimizer_number-1;
         mutex_array=new omp_lock_t[bucket_number];
         offsetUpdatekmer=1;
         offsetUpdatekmer<<=2*K;
+        offsetUpdatekmer--;
         offsetUpdateminimizer=1;
         offsetUpdateminimizer<<=(2*large_minimizer_size);
+        offsetUpdateminimizer--;
+        bucket_mask=bucket_number-1;
         for(uint32_t i=0;i<bucket_number;++i){
             omp_init_lock(&mutex_array[i]);
         }

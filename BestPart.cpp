@@ -251,6 +251,7 @@ void BestPart<T>::insert_sequence(const string& reference,uint level, Bloom<T>* 
 template <class T>
 void BestPart<T>::query_file(const string& filename, const string& output){
     cout<<"Query file "<<filename<<" in "<<output<<endl;
+    cout<<leaf_number<<" Indexed files"<<endl;
     auto  start = chrono::system_clock::now();
     zstr::ofstream out(output,ios::trunc);
     char type=get_data_type(filename);
@@ -281,18 +282,16 @@ void BestPart<T>::query_file(const string& filename, const string& output){
     uint64_t sum_query=0;
     #pragma omp parallel num_threads(core_number)
     {
-        vector<bool>* BBV=new vector<bool>(leaf_number*size/bucket_number,false);
         #pragma omp for 
         for(uint i=0;i<bucket_number;i++) {
             if(not (*colored_kmer_per_bucket)[i].empty()){
-                uint64_t sq(query_bucket((*colored_kmer_per_bucket)[i],*result,i,BBV));
+                uint64_t sq(query_bucket((*colored_kmer_per_bucket)[i],*result,i));
                 #pragma omp atomic
                 sum_query+=sq;
             }
         }
-        delete BBV;
     }
-    for(uint i=0;i<result->size();i++) {
+    for(uint i=0;i< result->size();i++) {
         {   
             out<<(*result)[i].first<<"\n";
             for(uint j=0;j<(*result)[i].second.size();j++){
@@ -348,13 +347,17 @@ void  BestPart<T>::insert_previous_index(const string& filename){
 template <class T>
 void BestPart<T>::load_super_kmer(vector<vector<pair<uint64_t,uint32_t> > >&colored_kmer_per_bucket,uint32_t query_id, const string& reference){
     auto V(get_super_kmers(reference));
+    uint64_t skmn(0);
     for(uint32_t i = 0; i < V.size();++i){
         omp_set_lock(&mutex_array[V[i].second]);
         for(uint32_t j = 0; j < V[i].first.size();++j){
+            // cout<<V[i].second<<endl;
             (colored_kmer_per_bucket[V[i].second]).push_back({V[i].first[j],query_id});
+            skmn++;
         }
         omp_unset_lock(&mutex_array[V[i].second]);
     }
+    cout<<skmn<<"superkmers"<<endl;
 }
 
 
@@ -402,10 +405,11 @@ uint64_t BestPart<T>::query_bucket2(const vector<pair<uint64_t,uint32_t> >& colo
 
 
 template <class T>
-uint64_t BestPart<T>::query_bucket(const vector<pair<uint64_t,uint32_t> >& colored_kmer, vector< pair<string,vector<uint32_t> > >& result, uint bucket_id,vector<bool>* BBV){
+uint64_t BestPart<T>::query_bucket(const vector<pair<uint64_t,uint32_t> >& colored_kmer, vector< pair<string,vector<uint32_t> > >& result, uint bucket_id){
+    vector<bool> BBV=vector<bool>(leaf_number*size/bucket_number,false);
     uint64_t sum(0);
     uint64_t size_partition=size/bucket_number;
-    buckets[bucket_id]->load(leaf_number,use_double_index,BBV);
+    buckets[bucket_id]->load(leaf_number,use_double_index,&BBV);
     buckets[bucket_id]->leaf_number=leaf_number;
     uint64_t mask(size_partition-1);
     for(uint32_t i = 0; i < colored_kmer.size();++i){
@@ -417,12 +421,13 @@ uint64_t BestPart<T>::query_bucket(const vector<pair<uint64_t,uint32_t> >& color
         uint64_t hash((hash_family(colored_kmer[i].first,0) & mask)*leaf_number);
         for(uint64_t l=min_local+hash ;l<=max_local+hash;++l){
             sum++;
-            if((*BBV)[l]){
+            if((BBV)[l]){
+                #pragma omp atomic
                 result[colored_kmer[i].second].second[l-hash]++;
             }
+            
         }
     }
-    BBV->clear();
     delete buckets[bucket_id];
     buckets[bucket_id]=NULL;
     return sum;
@@ -507,7 +512,11 @@ void BestPart<T>::insert_file_of_file(const string& filename){
     vector<string> file_names(parse_fof(filename));
     leaf_number=file_names.size();
     cout<<"Insert file of file "<<filename<<endl;
-    //~ path initial_path=current_path();
+    cout<<leaf_number<<" files found "<<endl;
+    if(leaf_number==0){
+        cout<<"Something's wrong, I can feel it"<<endl;
+        return;
+    }
     for(uint i(0);i<core_number;++i){
         add_leaf();
     }
