@@ -6,7 +6,7 @@
 #include <iostream>
 #include <vector>
 #include <math.h>
-#include <cmath> 
+#include <cmath>
 #include <string>
 #include <chrono>
 #include <ctime>
@@ -263,7 +263,7 @@ void BestPart<T>::query_file(const string& filename, const string& output){
     auto colored_kmer_per_bucket= new vector<vector<pair<uint64_t,uint32_t> > > (bucket_number);
     #pragma omp parallel num_threads(core_number)
     {
-        string ref,header; 
+        string ref,header;
         uint32_t query_id;
         while(not in.eof()) {
             #pragma omp critical (inputfile)
@@ -282,7 +282,7 @@ void BestPart<T>::query_file(const string& filename, const string& output){
     uint64_t sum_query=0;
     #pragma omp parallel num_threads(core_number)
     {
-        #pragma omp for 
+        #pragma omp for
         for(uint i=0;i<bucket_number;i++) {
             if(not (*colored_kmer_per_bucket)[i].empty()){
                 uint64_t sq(query_bucket((*colored_kmer_per_bucket)[i],*result,i));
@@ -292,7 +292,7 @@ void BestPart<T>::query_file(const string& filename, const string& output){
         }
     }
     for(uint i=0;i< result->size();i++) {
-        {   
+        {
             out<<(*result)[i].first<<"\n";
             for(uint j=0;j<(*result)[i].second.size();j++){
                 out<<(*result)[i].second[j]<<' ';
@@ -316,6 +316,7 @@ template <class T>
 void  BestPart<T>::insert_previous_index(const string& filename){
     zstr::ifstream in(filename+"/MainIndex");
     uint64_t osef,leaf_number_to_insert;
+    in.read(reinterpret_cast< char*>(&osef), sizeof(uint32_t));
     in.read(reinterpret_cast< char*>(&osef), sizeof(K));
     in.read(reinterpret_cast< char*>(&osef), sizeof(size));
     in.read(reinterpret_cast< char*>(&osef), sizeof(number_hash_function));
@@ -385,7 +386,7 @@ uint64_t BestPart<T>::query_bucket2(const vector<pair<uint64_t,uint32_t> >& colo
             }
         }
     }
- 
+
     for(uint32_t l=(minimal_value);l<maximal_value;++l){
         for(uint32_t i = 0; i < colored_kmer.size();++i){
             if(l>=minV[i] and l<=maxV[i]){
@@ -425,7 +426,7 @@ uint64_t BestPart<T>::query_bucket(const vector<pair<uint64_t,uint32_t> >& color
                 #pragma omp atomic
                 result[colored_kmer[i].second].second[l-hash]++;
             }
-            
+
         }
     }
     delete buckets[bucket_id];
@@ -470,7 +471,7 @@ void  BestPart<T>::insert_file(const string& filename, uint level, uint32_t indi
     if(filter){
         delete unique_filter;
     }
-    
+
     bm::serializer<bm::bvector<> > bvs;
 	bvs.byte_order_serialization(false);
 	bvs.gap_length_serialization(false);
@@ -520,7 +521,7 @@ void BestPart<T>::insert_file_of_file(const string& filename){
     for(uint i(0);i<core_number;++i){
         add_leaf();
     }
-    
+
     auto  start = chrono::system_clock::now();
     #pragma omp parallel for num_threads (core_number)
     for(uint i=0;i<file_names.size();++i){
@@ -530,7 +531,7 @@ void BestPart<T>::insert_file_of_file(const string& filename){
     chrono::duration<double> elapsed_seconds = middle - start;
     cout <<  "Bloom construction time: " << elapsed_seconds.count() << "s\n";
     cout<<intToString(getMemorySelfMaxUsed()/1024)<<" MB RAM used"<<endl;
-    
+
     index();
     auto  end = chrono::system_clock::now();
     elapsed_seconds = end - middle;
@@ -549,7 +550,7 @@ void BestPart<T>::serialize()const{
     path initial_path=current_path();
     path p {w_dir};
     if(exists(p)){
-        
+
     }else{
         create_directory(p);
     }
@@ -558,7 +559,9 @@ void BestPart<T>::serialize()const{
     filebuf fb;
     fb.open(filename, ios::out | ios::binary | ios::trunc);
 	zstr::ostream out(&fb);
+	uint32_t sizeT(sizeof(T));
     // VARIOUS INTEGERS
+    out.write(reinterpret_cast<const char*>(&sizeT), sizeof(sizeT));
 	out.write(reinterpret_cast<const char*>(&K), sizeof(K));
     out.write(reinterpret_cast<const char*>(&size), sizeof(size));
     out.write(reinterpret_cast<const char*>(&number_hash_function), sizeof(number_hash_function));

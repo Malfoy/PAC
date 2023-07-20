@@ -22,7 +22,7 @@ string fof(""), w_dir("My_index"), query_file(""),existing_index(""),query_outpu
 uint16_t nb_hash_func(1), bit_encoding(16);
 uint32_t kmer_size(31);
 uint32_t nb_partition(4);
-uint64_t bf_size(134217728); 
+uint64_t bf_size(134217728);
 uint64_t core_number(4);
 uint64_t mod(1);
 
@@ -44,7 +44,7 @@ void PrintHelp()
 			"\n INDEX QUERY\n"
 			"--query (-q)             :     Query sequence file (FASTA/Q/GZ)\n"
             "--out (-o)               :     Write query output in file (default: output.gz)\n"
-			
+
 			"\n TWEAK PARAMETERS\n"
 			"-k                       :     k-mer size (default: " << kmer_size << ")\n"
 			"-b                       :     Bloom filter size (default " << intToString(bf_size) << ")\n"
@@ -64,7 +64,7 @@ void PrintHelp()
 void ProcessArgs(int argc, char** argv)
 {
 	const char* const short_opts = "k:d:q:b:f:e:l:n:hiuo:p:c:m:";
-	const option long_opts[] = 
+	const option long_opts[] =
 	{
 		{"index", no_argument, nullptr, 'i'},
 		{"fof", required_argument, nullptr, 'f'},
@@ -145,7 +145,7 @@ void ProcessArgs(int argc, char** argv)
 int main(int argc, char **argv)
 {
     omp_set_nested(1);
-    
+
 	ProcessArgs(argc, argv);
 	if (argc < 2)
 	{
@@ -167,6 +167,14 @@ int main(int argc, char **argv)
     if(existing_index != ""){
         //TODO CHECK UPDATE
         existing_index=absolute(existing_index);
+        zstr::ifstream in(existing_index+"/MainIndex");
+		uint32_t sizeT;
+		in.read(reinterpret_cast<char*>(&sizeT), sizeof(sizeT));
+        existing_index=absolute(existing_index);
+        if(bit_encoding!=sizeT){
+			cout<<"Warning the existing index use a "<<sizeT*8<<" bits encoding. Input encoding ignored"<<endl;
+		}
+		bit_encoding=sizeT;
         switch (bit_encoding)
         {
             case 8:
@@ -177,7 +185,7 @@ int main(int argc, char **argv)
                     ever.insert_file_of_file(fof);
                 }else{
                     BestPart<uint8_t> ever(existing_index,core_number);
-                    
+
                     if(query_file!=""){
                         ever.query_file(query_file,query_output);
                     }
@@ -192,7 +200,7 @@ int main(int argc, char **argv)
                     ever.insert_file_of_file(fof);
                 }else{
                     BestPart<uint16_t> ever(existing_index,core_number);
-                    
+
                     if(query_file!=""){
                         ever.query_file(query_file,query_output);
                     }
@@ -207,7 +215,7 @@ int main(int argc, char **argv)
                     ever.insert_file_of_file(fof);
                 }else{
                     BestPart<uint32_t> ever(existing_index,core_number);
-                    
+
                     if(query_file!=""){
                         ever.query_file(query_file,query_output);
                     }
@@ -233,7 +241,7 @@ int main(int argc, char **argv)
             {
                 BestPart<uint16_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number,mod);
                 ever.insert_file_of_file(fof);
-                
+
                 if(query_file!=""){
                     ever.query_file(query_file,query_output);
                 }
@@ -253,6 +261,6 @@ int main(int argc, char **argv)
         }
 		return 0;
 	}
-	
+
 	return 0;
 }

@@ -8,8 +8,8 @@
 #include <iostream>
 #include <vector>
 #include <math.h>
-#include <cmath> 
-#include <omp.h> 
+#include <cmath>
+#include <omp.h>
 #include <filesystem>
 
 
@@ -55,7 +55,7 @@ public:
         w_dir=(Iwdir);
         path p {w_dir};
         if(exists(p)){
-        
+
         }else{
             create_directory(p);
         }
@@ -94,7 +94,7 @@ public:
         w_dir=existing_index;
         path p {existing_index};
         if(exists(p)){
-            
+
         }else{
            cout<<"I cannot found you index sorry ..."<<endl;
            return;
@@ -102,7 +102,9 @@ public:
         current_path(p);
         string filename("MainIndex");
         zstr::ifstream in(filename);
+        uint32_t osef;
          // VARIOUS INTEGERS
+        in.read(reinterpret_cast<char*>(&osef), sizeof(uint32_t));
         in.read(reinterpret_cast< char*>(&K), sizeof(K));
         in.read(reinterpret_cast< char*>(&size), sizeof(size));
         in.read(reinterpret_cast< char*>(&number_hash_function), sizeof(number_hash_function));
