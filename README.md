@@ -119,7 +119,7 @@ TBD
 ## Credits <a name="cr"></a>
 
 For further information our preprint "Scalable sequence database search using Partitioned Aggregated Bloom Comb-Trees"
- can be consulted in [Biorxiv](TBA)
+ can be consulted in [Biorxiv](https://www.biorxiv.org/content/10.1101/2022.02.11.480089v2)
 
 
 
