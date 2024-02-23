@@ -171,10 +171,11 @@ int main(int argc, char **argv)
 		uint32_t sizeT;
 		in.read(reinterpret_cast<char*>(&sizeT), sizeof(sizeT));
         existing_index=absolute(existing_index);
-        if(bit_encoding!=sizeT){
-			cout<<"Warning the existing index use a "<<sizeT*8<<" bits encoding. Input encoding ignored"<<endl;
-		}
-		bit_encoding=sizeT;
+        // if(bit_encoding!=sizeT){
+		// 	cout<<"Warning the existing index use a "<<sizeT*8<<" bits encoding. Input encoding ignored"<<endl;
+		// }
+		bit_encoding=sizeT*8;
+        cout<<bit_encoding<<endl;
         switch (bit_encoding)
         {
             case 8:
@@ -194,14 +195,17 @@ int main(int argc, char **argv)
             }
             case 16:
             {
+                cout<<"ici"<<endl;
                 if(fof!=""){
                     BestPart<uint16_t> ever(bf_size, nb_hash_func, kmer_size,filter_unique,w_dir,use_double_index,nb_partition,core_number,mod);
                     ever.insert_previous_index(existing_index);
                     ever.insert_file_of_file(fof);
                 }else{
                     BestPart<uint16_t> ever(existing_index,core_number);
+                    cout<<"LOADED"<<endl;
 
                     if(query_file!=""){
+                        cout<<"QUERY"<<endl;
                         ever.query_file(query_file,query_output);
                     }
                 }

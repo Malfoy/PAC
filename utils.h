@@ -35,6 +35,7 @@ uint64_t str2numstrand(const string& str) ;
 
 
 uint64_t xorshift64(uint64_t& state);
+uint64_t xorshift64star(uint64_t x);
 
 
 

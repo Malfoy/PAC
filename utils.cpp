@@ -86,6 +86,14 @@ uint64_t xorshift64(uint64_t& state){
 }
 
 
+uint64_t xorshift64star(uint64_t x ) {
+    x ^= x >> 12;
+    x ^= x << 25;
+    x ^= x >> 27;
+    return x * 0x2545F4914F6CDD1DULL;
+}
+
+
 
 uint64_t hash64shift(uint64_t key) {
 	key = (~key) + (key << 21); // key = (key << 21) - key - 1;
@@ -110,7 +118,7 @@ uint64_t getMemorySelfMaxUsed (){
 
 
 uint64_t hash_family(uint64_t key,uint b){
-    return hash64shift(key) + xorshift64(key)*b;
+  return hash64shift(key) + xorshift64(key)*b;
 }
 
 
